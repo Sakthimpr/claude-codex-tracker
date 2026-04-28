@@ -41,6 +41,21 @@ mkdir -p "${MACOS}" "${RESOURCES}"
 echo "▶ Copying Python script..."
 cp tracker_v2.py "${RESOURCES}/tracker_v2.py"
 
+echo "▶ Creating app icon..."
+ICONSET=$(mktemp -d)/AppIcon.iconset
+mkdir -p "${ICONSET}"
+SRC="icon.png"
+sips -z 16   16   "${SRC}" --out "${ICONSET}/icon_16x16.png"      > /dev/null
+sips -z 32   32   "${SRC}" --out "${ICONSET}/icon_16x16@2x.png"   > /dev/null
+sips -z 32   32   "${SRC}" --out "${ICONSET}/icon_32x32.png"      > /dev/null
+sips -z 64   64   "${SRC}" --out "${ICONSET}/icon_32x32@2x.png"   > /dev/null
+sips -z 128  128  "${SRC}" --out "${ICONSET}/icon_128x128.png"    > /dev/null
+sips -z 256  256  "${SRC}" --out "${ICONSET}/icon_128x128@2x.png" > /dev/null
+sips -z 256  256  "${SRC}" --out "${ICONSET}/icon_256x256.png"    > /dev/null
+sips -z 512  512  "${SRC}" --out "${ICONSET}/icon_256x256@2x.png" > /dev/null
+cp "${SRC}" "${ICONSET}/icon_512x512.png"
+iconutil -c icns "${ICONSET}" -o "${RESOURCES}/AppIcon.icns"
+
 echo "▶ Compiling Swift launcher..."
 xcrun swiftc \
     -target arm64-apple-macosx13.0 \
@@ -61,7 +76,7 @@ cat > "${APP_DIR}/Contents/Info.plist" << 'PLIST'
     <key>CFBundleShortVersionString</key><string>2.0</string>
     <key>CFBundleExecutable</key>       <string>ClaudeTracker</string>
     <key>CFBundlePackageType</key>      <string>APPL</string>
-    <key>LSUIElement</key>              <true/>
+    <key>CFBundleIconFile</key>         <string>AppIcon</string>
     <key>NSHighResolutionCapable</key>  <true/>
 </dict>
 </plist>

@@ -30,8 +30,17 @@ func fatalAlert(_ message: String) {
 
 // ── App setup ────────────────────────────────────────────────────────────────
 let app = NSApplication.shared
-// Accessory policy = LSUIElement: no Dock icon, no app menu, menu bar only
-app.setActivationPolicy(.accessory)
+// Regular policy = shows in Dock with icon; menu bar icon is owned by Python/rumps
+app.setActivationPolicy(.regular)
+
+// Minimal app menu so Quit (⌘Q) works from the Dock
+let mainMenu = NSMenu()
+let appItem  = NSMenuItem()
+mainMenu.addItem(appItem)
+let appMenu  = NSMenu()
+appItem.submenu = appMenu
+appMenu.addItem(NSMenuItem(title: "Quit Claude Tracker", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+app.mainMenu = mainMenu
 
 guard let python = findPython() else {
     fatalAlert("Python 3 is required.\n\nInstall it from python.org and relaunch.")
