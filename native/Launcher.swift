@@ -181,7 +181,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func buildStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let btn = statusItem.button {
-            btn.title = "⚪⚪ C W:— S:— | ⚪⚪ O W:— S:—"
+            btn.title = "C ⚪⚪  O ⚪⚪"
             btn.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         }
         statusItem.menu = appMenu
@@ -354,7 +354,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let oWDot = oWView != "—" ? colorDotForValue(oWView, isRemaining: showRemaining) : "⚪"
         let oSDot = oSView != "—" ? colorDotForValue(oSView, isRemaining: showRemaining) : "⚪"
 
-        statusItem.button?.title = "\(cWDot)\(cSDot) C W:\(cWView) S:\(cSView) | \(oWDot)\(oSDot) O W:\(oWView) S:\(oSView)"
+        statusItem.button?.title = "C \(cWDot)\(cSDot)  O \(oWDot)\(oSDot)"
 
         setLabel(lbClaudeSessionBar, "     \(colorDotForValue(cSView, isRemaining: showRemaining))  \(progressBar(cSView))  \(cSView) \(modeLabel)", color: barColorForValue(cSView, isRemaining: showRemaining))
         setLabel(lbClaudeSessionReset, "     ↻  \(cSReset)", color: .secondaryLabelColor, size: 11)
