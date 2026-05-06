@@ -17,7 +17,7 @@ echo "✅  Python: $($PYTHON --version)  ($PYTHON)"
 
 echo "▶ Checking required packages..."
 MISSING=""
-for pkg in playwright browser_cookie3; do
+for pkg in playwright browser_cookie3 requests; do
     if ! $PYTHON -c "import $pkg" 2>/dev/null; then
         MISSING="$MISSING $pkg"
     fi
