@@ -22,7 +22,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var lbCodexSessionReset: NSTextField!
     var lbCodexWeeklyBar: NSTextField!
     var lbCodexWeeklyReset: NSTextField!
-    var lbCodexCredits: NSTextField!
     var lbCodexStatus: NSTextField!
 
     var lbLegend: NSTextField!
@@ -89,7 +88,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         lbClaudeSessionReset = lbSR
         appMenu.addItem(sr)
 
-        let (wl, _) = makeRow(text: "  📅  Weekly  (All Models)", color: accent, size: 12, height: 18)
+        let (wl, _) = makeRow(text: "  Weekly  (All Models)", color: accent, size: 12, height: 18)
         appMenu.addItem(wl)
 
         let (wb, lbWB) = makeRow(text: "     ⚪  ░░░░░░░░░░  — used", color: cream, height: 22)
@@ -120,7 +119,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         lbCodexSessionReset = lbCSR
         appMenu.addItem(csr)
 
-        let (cwl, _) = makeRow(text: "  📅  Weekly", color: accent, size: 12, height: 18)
+        let (cwl, _) = makeRow(text: "  Weekly", color: accent, size: 12, height: 18)
         appMenu.addItem(cwl)
 
         let (cwb, lbCWB) = makeRow(text: "     ⚪  ░░░░░░░░░░  — used", color: cream, height: 22)
@@ -130,10 +129,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let (cwr, lbCWR) = makeRow(text: "     ↻  —", color: dim, size: 11, height: 18)
         lbCodexWeeklyReset = lbCWR
         appMenu.addItem(cwr)
-
-        let (cxcr, lbCxCr) = makeRow(text: "     ⊕  Credits: —", color: dim, size: 11, height: 18)
-        lbCodexCredits = lbCxCr
-        appMenu.addItem(cxcr)
 
         let (cxst, lbCxSt) = makeRow(text: "  ●  Status: Starting...", color: dim, size: 11, height: 18)
         lbCodexStatus = lbCxSt
@@ -330,7 +325,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let oWReset = stringValue(codex["weekly_reset"])
         let oSReset = stringValue(codex["session_reset"])
         let oStatus = stringValue(codex["status"], fallback: codex.isEmpty ? "Waiting for data..." : "—")
-        let oCredits = stringValue(codex["credits_balance"], fallback: "—")
 
         let updated = stringValue(payload["last_updated"], fallback: stringValue(claude["last_updated"], fallback: "Never"))
 
@@ -366,7 +360,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setLabel(lbCodexSessionReset, "     ↻  \(oSReset)", color: .secondaryLabelColor, size: 11)
         setLabel(lbCodexWeeklyBar, "     \(colorDotForValue(oWView, isRemaining: showRemaining))  \(progressBar(oWView))  \(oWView) \(modeLabel)", color: barColorForValue(oWView, isRemaining: showRemaining))
         setLabel(lbCodexWeeklyReset, "     ↻  \(oWReset)", color: .secondaryLabelColor, size: 11)
-        setLabel(lbCodexCredits, "     ⊕  Credits: \(oCredits)", color: .secondaryLabelColor, size: 11)
         setLabel(lbCodexStatus, "  ●  Status: \(oStatus)", color: .labelColor, size: 11)
 
         var aboveNow = Set<String>()
