@@ -2,7 +2,7 @@
 Unified Claude + Codex Usage Tracker — Background Data Fetcher
 
 Fetches usage from:
-- Claude API (existing flow via playwright request context)
+- Claude API (direct authenticated requests via Chrome cookies)
 - Codex API (chatgpt.com authenticated API calls)
 
 Writes JSON to /tmp/claude_tracker_data.json for the Swift menu bar app.
@@ -21,6 +21,7 @@ OUTPUT_FILE = "/tmp/claude_tracker_data.json"
 
 CLAUDE_ORG_ID = "b8418e36-3c7f-4302-a9c4-07bec8c1f471"
 CLAUDE_USAGE_API = f"https://claude.ai/api/organizations/{CLAUDE_ORG_ID}/usage"
+CLAUDE_ORG_API = f"https://claude.ai/api/organizations/{CLAUDE_ORG_ID}"
 
 CHATGPT_SESSION_API = "https://chatgpt.com/api/auth/session"
 CODEX_USAGE_API = "https://chatgpt.com/backend-api/wham/usage"
@@ -101,26 +102,11 @@ def get_claude_cookies(force=False):
         import browser_cookie3
         jar = browser_cookie3.chrome(domain_name=".claude.ai")
     except Exception:
-        return []
+        return None
 
-    cookies = []
-    for c in jar:
-        cookie = {
-            "name": c.name,
-            "value": c.value,
-            "domain": c.domain if c.domain.startswith(".") else "." + c.domain,
-            "path": c.path or "/",
-            "secure": bool(c.secure),
-            "httpOnly": False,
-            "sameSite": "Lax",
-        }
-        if c.expires:
-            cookie["expires"] = float(c.expires)
-        cookies.append(cookie)
-
-    _claude_cookie_cache = cookies
+    _claude_cookie_cache = jar
     _claude_cookie_cache_time = now
-    return cookies
+    return jar
 
 
 def get_chatgpt_cookies(force=False):
@@ -143,6 +129,7 @@ def get_chatgpt_cookies(force=False):
 def default_block(status):
     return {
         "status": status,
+        "plan_label": "—",
         "weekly_pct": "—",
         "session_pct": "—",
         "weekly_reset": "—",
@@ -171,44 +158,94 @@ def build_payload(claude_block, codex_block):
     return payload
 
 
-def fetch_claude_usage(browser, consecutive_failures):
-    ctx = None
+def normalize_claude_plan(org_data):
+    if not isinstance(org_data, dict):
+        return "CLAUDE"
+    caps = org_data.get("capabilities") or []
+    cap_text = " ".join(caps).lower() if isinstance(caps, list) else str(caps).lower()
+    if "claude_max" in cap_text or "max" in cap_text:
+        return "MAX"
+    if "claude_pro" in cap_text or "pro" in cap_text:
+        return "PRO"
+    if "free" in cap_text:
+        return "FREE"
+    return "CLAUDE"
+
+
+def normalize_codex_plan(plan_type):
+    raw = str(plan_type or "").strip().lower()
+    if not raw:
+        return "CODEX"
+    if "max" in raw:
+        return "MAX"
+    if "plus" in raw:
+        return "PLUS"
+    if "pro" in raw:
+        return "PRO"
+    if "team" in raw:
+        return "TEAM"
+    if "enterprise" in raw:
+        return "ENTERPRISE"
+    if "free" in raw:
+        return "FREE"
+    return raw.upper()
+
+
+def fetch_claude_usage(consecutive_failures):
     try:
         cookies = get_claude_cookies(force=(consecutive_failures >= 2))
         if not cookies:
-            return default_block("Log in to claude.ai in Chrome first"), False, consecutive_failures + 1, browser
+            return default_block("Log in to claude.ai in Chrome first"), False, consecutive_failures + 1
 
-        ctx = browser.new_context(user_agent=(
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ))
-        ctx.add_cookies(cookies)
+        session = requests.Session()
+        session.cookies = cookies
 
-        resp = ctx.request.get(
+        resp = session.get(
             CLAUDE_USAGE_API,
-            headers={"anthropic-client-platform": "web_claude_ai"},
-            timeout=20000,
+            headers={
+                "accept": "application/json, text/plain, */*",
+                "anthropic-client-platform": "web_claude_ai",
+                "origin": "https://claude.ai",
+                "referer": "https://claude.ai/",
+                "user-agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/124.0.0.0 Safari/537.36"
+                ),
+            },
+            timeout=20,
         )
 
-        if resp.status != 200:
-            return default_block("Session expired — open claude.ai in Chrome"), False, consecutive_failures + 1, browser
+        if resp.status_code != 200:
+            return default_block("Session expired — open claude.ai in Chrome"), False, consecutive_failures + 1
 
         data = resp.json()
-        session = data.get("five_hour", {}) or {}
-        weekly = data.get("seven_day", {}) or {}
+        org_resp = session.get(
+            CLAUDE_ORG_API,
+            headers={
+                "accept": "application/json, text/plain, */*",
+                "anthropic-client-platform": "web_claude_ai",
+                "origin": "https://claude.ai",
+                "referer": "https://claude.ai/",
+            },
+            timeout=20,
+        )
+        org_data = org_resp.json() if org_resp.status_code == 200 else {}
+        session_window = data.get("five_hour", {}) or {}
+        weekly_window = data.get("seven_day", {}) or {}
 
-        session_used = safe_int(session.get("utilization"), 0)
-        weekly_used = safe_int(weekly.get("utilization"), 0)
+        session_used = safe_int(session_window.get("utilization"), 0)
+        weekly_used = safe_int(weekly_window.get("utilization"), 0)
         session_remaining = max(0, 100 - session_used)
         weekly_remaining = max(0, 100 - weekly_used)
 
         block = {
             "status": "Live",
+            "plan_label": normalize_claude_plan(org_data),
             "session_pct": percent_str(session_used),
             "weekly_pct": percent_str(weekly_used),
-            "session_reset": format_reset_iso(session.get("resets_at", "")),
-            "weekly_reset": format_reset_iso(weekly.get("resets_at", "")),
+            "session_reset": format_reset_iso(session_window.get("resets_at", "")),
+            "weekly_reset": format_reset_iso(weekly_window.get("resets_at", "")),
             "session_used_pct": session_used,
             "weekly_used_pct": weekly_used,
             "session_remaining_pct": session_remaining,
@@ -217,17 +254,11 @@ def fetch_claude_usage(browser, consecutive_failures):
             "last_updated": now_str(),
         }
         at_limit = session_used >= 100 or weekly_used >= 100
-        return block, at_limit, 0, browser
+        return block, at_limit, 0
 
     except Exception as e:
         failures = consecutive_failures + 1
-        return default_block(f"Error: {str(e)[:60]}"), False, failures, browser
-    finally:
-        if ctx:
-            try:
-                ctx.close()
-            except Exception:
-                pass
+        return default_block(f"Error: {str(e)[:60]}"), False, failures
 
 
 def fetch_codex_usage(consecutive_failures):
@@ -287,6 +318,7 @@ def fetch_codex_usage(consecutive_failures):
 
         block = {
             "status": "Live",
+            "plan_label": normalize_codex_plan(data.get("plan_type")),
             "session_pct": percent_str(session_used),
             "weekly_pct": percent_str(weekly_used),
             "session_reset": format_reset_epoch(primary.get("reset_at")),
@@ -306,8 +338,6 @@ def fetch_codex_usage(consecutive_failures):
 
 
 def main():
-    from playwright.sync_api import sync_playwright
-
     claude_block = default_block("Starting...")
     codex_block = default_block("Starting...")
     write_data(**build_payload(claude_block, codex_block))
@@ -315,25 +345,12 @@ def main():
     claude_failures = 0
     codex_failures = 0
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+    while True:
+        claude_block, claude_at_limit, claude_failures = fetch_claude_usage(claude_failures)
+        codex_block, codex_at_limit, codex_failures = fetch_codex_usage(codex_failures)
 
-        while True:
-            claude_block, claude_at_limit, claude_failures, browser = fetch_claude_usage(
-                browser, claude_failures
-            )
-            codex_block, codex_at_limit, codex_failures = fetch_codex_usage(codex_failures)
-
-            if claude_failures >= 5:
-                try:
-                    browser.close()
-                except Exception:
-                    pass
-                browser = p.chromium.launch(headless=True)
-                claude_failures = 0
-
-            write_data(**build_payload(claude_block, codex_block))
-            time.sleep(REFRESH_AT_LIMIT if (claude_at_limit or codex_at_limit) else REFRESH_INTERVAL)
+        write_data(**build_payload(claude_block, codex_block))
+        time.sleep(REFRESH_AT_LIMIT if (claude_at_limit or codex_at_limit) else REFRESH_INTERVAL)
 
 
 if __name__ == "__main__":
