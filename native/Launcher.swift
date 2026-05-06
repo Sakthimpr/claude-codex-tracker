@@ -2,15 +2,11 @@ import Cocoa
 import Foundation
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    let highUsageThreshold = 80
     var statusItem: NSStatusItem!
     var appMenu: NSMenu!
     var pythonProcess: Process?
     var showRemaining = false
-    var alertsEnabled = true
-    var currentAboveThresholdKeys = Set<String>()
     var toggleUsageModeItem: NSMenuItem!
-    var toggleAlertsItem: NSMenuItem!
 
     var lbClaudeSessionBar: NSTextField!
     var lbClaudeSessionReset: NSTextField!
@@ -24,8 +20,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var lbCodexWeeklyReset: NSTextField!
     var lbCodexStatus: NSTextField!
 
-    var lbLegend: NSTextField!
-    var lbAlert: NSTextField!
     var lbUpdated: NSTextField!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -66,7 +60,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.autoenablesItems = false
 
         let header  = NSColor.labelColor
-        let accent  = NSColor(calibratedRed: 0.40, green: 0.80, blue: 1.00, alpha: 1)
+        let accent  = NSColor(calibratedRed: 0.18, green: 0.78, blue: 0.72, alpha: 1)
         let cream   = NSColor(calibratedRed: 1.00, green: 0.90, blue: 0.60, alpha: 1)
         let dim     = NSColor.secondaryLabelColor
 
@@ -140,25 +134,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         lbUpdated = lbUp
         appMenu.addItem(upRow)
 
-        let (lgRow, lbLg) = makeRow(text: "  ℹ︎  S = Session (5h), W = Weekly", color: dim, size: 10, height: 16)
-        lbLegend = lbLg
-        appMenu.addItem(lgRow)
-
-        let (alRow, lbAl) = makeRow(text: "  ⚠︎  High usage alert: none", color: dim, size: 10, height: 16)
-        lbAlert = lbAl
-        appMenu.addItem(alRow)
-
         appMenu.addItem(.separator())
 
         toggleUsageModeItem = NSMenuItem(title: "Show Remaining %", action: #selector(toggleUsageMode), keyEquivalent: "m")
         toggleUsageModeItem.target = self
         toggleUsageModeItem.isEnabled = true
         appMenu.addItem(toggleUsageModeItem)
-
-        toggleAlertsItem = NSMenuItem(title: "Disable High-Usage Alerts", action: #selector(toggleAlerts), keyEquivalent: "a")
-        toggleAlertsItem.target = self
-        toggleAlertsItem.isEnabled = true
-        appMenu.addItem(toggleAlertsItem)
 
         let openCodexItem = NSMenuItem(title: "Open Codex Analytics", action: #selector(openCodexAnalytics), keyEquivalent: "o")
         openCodexItem.target = self
@@ -332,11 +313,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let cWeekly = weeklyUsedRemainingPcts(from: claude)
         let oSession = usedRemainingPcts(from: codex)
         let oWeekly = weeklyUsedRemainingPcts(from: codex)
-        let cSessionUsed = pctInt(cSession.used)
-        let cWeeklyUsed = pctInt(cWeekly.used)
-        let oSessionUsed = pctInt(oSession.used)
-        let oWeeklyUsed = pctInt(oWeekly.used)
-
         let cSView = showRemaining ? cSession.remaining : cSession.used
         let cWView = showRemaining ? cWeekly.remaining : cWeekly.used
         let oSView = showRemaining ? oSession.remaining : oSession.used
@@ -362,51 +338,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setLabel(lbCodexWeeklyReset, "     ↻  \(oWReset)", color: .secondaryLabelColor, size: 11)
         setLabel(lbCodexStatus, "  ●  Status: \(oStatus)", color: .labelColor, size: 11)
 
-        var aboveNow = Set<String>()
-        var alerts: [String] = []
-        if let v = cSessionUsed, v >= highUsageThreshold {
-            aboveNow.insert("claude_session")
-            alerts.append("Claude S \(v)%")
-        }
-        if let v = cWeeklyUsed, v >= highUsageThreshold {
-            aboveNow.insert("claude_weekly")
-            alerts.append("Claude W \(v)%")
-        }
-        if let v = oSessionUsed, v >= highUsageThreshold {
-            aboveNow.insert("codex_session")
-            alerts.append("Codex S \(v)%")
-        }
-        if let v = oWeeklyUsed, v >= highUsageThreshold {
-            aboveNow.insert("codex_weekly")
-            alerts.append("Codex W \(v)%")
-        }
-
-        let newCrossings = aboveNow.subtracting(currentAboveThresholdKeys)
-        if alertsEnabled && !newCrossings.isEmpty {
-            NSSound.beep()
-        }
-        currentAboveThresholdKeys = aboveNow
-
-        if alerts.isEmpty {
-            setLabel(lbAlert, "  ⚠︎  High usage alert: none", color: .secondaryLabelColor, size: 10)
-        } else {
-            setLabel(lbAlert, "  ⚠︎  High usage (\(highUsageThreshold)%+): " + alerts.joined(separator: ", "), color: .systemRed, size: 10)
-        }
-
         toggleUsageModeItem.state = showRemaining ? .on : .off
         toggleUsageModeItem.title = showRemaining ? "Show Used %" : "Show Remaining %"
-        toggleAlertsItem.state = alertsEnabled ? .on : .off
-        toggleAlertsItem.title = alertsEnabled ? "Disable High-Usage Alerts" : "Enable High-Usage Alerts"
         setLabel(lbUpdated, "  🕐  Updated: \(updated)", color: .secondaryLabelColor, size: 11)
     }
 
     @objc func toggleUsageMode() {
         showRemaining.toggle()
-        loadData()
-    }
-
-    @objc func toggleAlerts() {
-        alertsEnabled.toggle()
         loadData()
     }
 
