@@ -46,13 +46,13 @@ final class ClickableMenuRowView: NSView {
         needsDisplay = true
         wantsLayer = true
         CATransaction.begin()
-        CATransaction.setAnimationDuration(0.12)
-        layer?.transform = CATransform3DMakeScale(1.02, 1.02, 1.0)
+        CATransaction.setAnimationDuration(0.10)
+        layer?.transform = CATransform3DMakeScale(1.01, 1.01, 1.0)
         layer?.backgroundColor = hoverColor.cgColor
         layer?.cornerRadius = 8
-        layer?.shadowColor = NSColor.black.withAlphaComponent(0.35).cgColor
-        layer?.shadowOpacity = 0.35
-        layer?.shadowRadius = 6
+        layer?.shadowColor = NSColor.black.withAlphaComponent(0.22).cgColor
+        layer?.shadowOpacity = 0.22
+        layer?.shadowRadius = 4
         layer?.shadowOffset = CGSize(width: 0, height: -1)
         CATransaction.commit()
     }
@@ -67,7 +67,7 @@ final class ClickableMenuRowView: NSView {
         needsDisplay = true
         wantsLayer = true
         CATransaction.begin()
-        CATransaction.setAnimationDuration(0.12)
+        CATransaction.setAnimationDuration(0.10)
         layer?.transform = CATransform3DIdentity
         layer?.backgroundColor = normalColor.cgColor
         layer?.cornerRadius = 0
@@ -80,7 +80,241 @@ final class ClickableMenuRowView: NSView {
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+final class ProgressBarMenuRowView: NSView {
+    var fillFraction: CGFloat = 0.0 { didSet { needsDisplay = true } }
+    var secondaryFraction: CGFloat = 0.0 { didSet { needsDisplay = true } }
+    var tickFraction: CGFloat? { didSet { needsDisplay = true } }
+    var fillColor: NSColor = .systemGreen { didSet { needsDisplay = true } }
+    var secondaryColor: NSColor = NSColor(calibratedWhite: 1.0, alpha: 0.18) { didSet { needsDisplay = true } }
+    var trackColor: NSColor = NSColor(calibratedRed: 0.29, green: 0.32, blue: 0.31, alpha: 0.75) { didSet { needsDisplay = true } }
+    var glowFactor: CGFloat = 1.0 { didSet { needsDisplay = true } }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+        ctx.saveGState()
+
+        let insetX: CGFloat = 16
+        let barHeight: CGFloat = 2
+        let trackRect = NSRect(
+            x: insetX,
+            y: max(0.0, (bounds.height - barHeight) / 2.0),
+            width: max(10, bounds.width - insetX * 2),
+            height: barHeight
+        )
+
+        let trackPath = NSBezierPath(roundedRect: trackRect, xRadius: barHeight / 2, yRadius: barHeight / 2)
+        trackColor.setFill()
+        trackPath.fill()
+        let glow = min(max(glowFactor, 0.0), 1.0)
+
+        let clampedSecondary = min(max(secondaryFraction, 0.0), 1.0)
+        if clampedSecondary > 0.0 {
+            let rawWidth = trackRect.width * clampedSecondary
+            let fillWidth = min(trackRect.width, max(rawWidth, 2.0))
+            let fillRect = NSRect(x: trackRect.minX, y: trackRect.minY, width: fillWidth, height: trackRect.height)
+            let fillRadius = min(barHeight / 2, max(1.5, fillRect.width / 3.5))
+            let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: fillRadius, yRadius: fillRadius)
+            let secondaryCore = secondaryColor.blended(withFraction: 0.14, of: .white) ?? secondaryColor
+            let secondaryAtmosphere = NSRect(
+                x: fillRect.minX,
+                y: fillRect.minY - 1.8,
+                width: fillRect.width,
+                height: fillRect.height + 3.6
+            )
+            let secondaryAtmospherePath = NSBezierPath(
+                roundedRect: secondaryAtmosphere,
+                xRadius: (fillRect.height + 3.6) / 2,
+                yRadius: (fillRect.height + 3.6) / 2
+            )
+
+            ctx.saveGState()
+            ctx.setShadow(offset: .zero, blur: 20.0 * glow, color: secondaryColor.withAlphaComponent(0.28 * glow).cgColor)
+            secondaryColor.withAlphaComponent(0.60).setFill()
+            secondaryAtmospherePath.fill()
+            ctx.restoreGState()
+
+            ctx.saveGState()
+            ctx.setShadow(offset: .zero, blur: 12.0 * glow, color: secondaryColor.withAlphaComponent(0.50 * glow).cgColor)
+            secondaryColor.withAlphaComponent(0.78).setFill()
+            fillPath.fill()
+            ctx.restoreGState()
+
+            ctx.saveGState()
+            ctx.setShadow(offset: .zero, blur: 7.5 * glow, color: secondaryColor.withAlphaComponent(0.68 * glow).cgColor)
+            secondaryCore.setFill()
+            fillPath.fill()
+            ctx.restoreGState()
+
+            secondaryCore.setFill()
+            fillPath.fill()
+        }
+
+        let clampedFill = min(max(fillFraction, 0.0), 1.0)
+        if clampedFill > 0.0 {
+            let rawWidth = trackRect.width * clampedFill
+            let fillWidth = min(trackRect.width, max(rawWidth, 2.0))
+            let fillRect = NSRect(x: trackRect.minX, y: trackRect.minY, width: fillWidth, height: trackRect.height)
+            let fillRadius = min(barHeight / 2, max(1.5, fillRect.width / 3.5))
+            let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: fillRadius, yRadius: fillRadius)
+            let primaryCore = fillColor.blended(withFraction: 0.20, of: .white) ?? fillColor
+            let primaryAtmosphere = NSRect(
+                x: fillRect.minX,
+                y: fillRect.minY - 2.3,
+                width: fillRect.width,
+                height: fillRect.height + 4.6
+            )
+            let primaryAtmospherePath = NSBezierPath(
+                roundedRect: primaryAtmosphere,
+                xRadius: (fillRect.height + 4.6) / 2,
+                yRadius: (fillRect.height + 4.6) / 2
+            )
+
+            ctx.saveGState()
+            ctx.setShadow(offset: .zero, blur: 26.0 * glow, color: fillColor.withAlphaComponent(0.30 * glow).cgColor)
+            fillColor.withAlphaComponent(0.58).setFill()
+            primaryAtmospherePath.fill()
+            ctx.restoreGState()
+
+            ctx.saveGState()
+            ctx.setShadow(offset: .zero, blur: 15.0 * glow, color: fillColor.withAlphaComponent(0.50 * glow).cgColor)
+            fillColor.withAlphaComponent(0.82).setFill()
+            fillPath.fill()
+            ctx.restoreGState()
+
+            ctx.saveGState()
+            ctx.setShadow(offset: .zero, blur: 9.5 * glow, color: fillColor.withAlphaComponent(0.72 * glow).cgColor)
+            primaryCore.setFill()
+            fillPath.fill()
+            ctx.restoreGState()
+
+            primaryCore.setFill()
+            fillPath.fill()
+        }
+
+        if let tickFraction {
+            let t = min(max(tickFraction, 0.0), 1.0)
+            let x = trackRect.minX + trackRect.width * t
+            let tickRect = NSRect(x: x - 0.75, y: trackRect.minY - 1.0, width: 1.5, height: trackRect.height + 2)
+            let tickPath = NSBezierPath(roundedRect: tickRect, xRadius: 1.0, yRadius: 1.0)
+            NSColor(calibratedWhite: 1.0, alpha: 0.58).setFill()
+            tickPath.fill()
+        }
+
+        ctx.restoreGState()
+    }
+}
+
+protocol SectionHoverDelegate: AnyObject {
+    func sectionHoverChanged(group: String, delta: Int)
+}
+
+protocol StatusDotHoverDelegate: AnyObject {
+    func statusDotHoverChanged(key: String, entered: Bool, anchor: NSView)
+}
+
+final class SectionHoverRowView: NSView {
+    weak var delegate: SectionHoverDelegate?
+    var group: String = ""
+    var trackingAreaRef: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = trackingAreaRef {
+            removeTrackingArea(area)
+        }
+        let opts: NSTrackingArea.Options = [.mouseEnteredAndExited, .activeAlways, .inVisibleRect]
+        let area = NSTrackingArea(rect: bounds, options: opts, owner: self, userInfo: nil)
+        addTrackingArea(area)
+        trackingAreaRef = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        delegate?.sectionHoverChanged(group: group, delta: 1)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        delegate?.sectionHoverChanged(group: group, delta: -1)
+    }
+}
+
+final class StatusDotTooltipView: NSView {
+    weak var hoverDelegate: StatusDotHoverDelegate?
+    var metricKey: String = ""
+    private var trackingAreaRef: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = trackingAreaRef {
+            removeTrackingArea(area)
+        }
+        let opts: NSTrackingArea.Options = [.mouseEnteredAndExited, .activeAlways, .inVisibleRect]
+        let area = NSTrackingArea(rect: bounds, options: opts, owner: self, userInfo: nil)
+        addTrackingArea(area)
+        trackingAreaRef = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        hoverDelegate?.statusDotHoverChanged(key: metricKey, entered: true, anchor: self)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        hoverDelegate?.statusDotHoverChanged(key: metricKey, entered: false, anchor: self)
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // Keep status button click behavior unchanged while still enabling tooltip regions.
+        nil
+    }
+}
+
+final class StatusTooltipRowView: NSView {
+    let label = NSTextField(labelWithString: "")
+    let accentColor: NSColor
+
+    init(accentColor: NSColor) {
+        self.accentColor = accentColor
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.cornerRadius = 6
+        layer?.masksToBounds = true
+        label.drawsBackground = false
+        label.isBezeled = false
+        label.isEditable = false
+        label.isSelectable = false
+        label.lineBreakMode = .byTruncatingTail
+        addSubview(label)
+    }
+
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override func layout() {
+        super.layout()
+        label.frame = NSRect(x: 6, y: 2, width: max(0, bounds.width - 12), height: max(0, bounds.height - 4))
+    }
+
+    func update(text: String, active: Bool) {
+        let fg = NSColor(calibratedWhite: 0.94, alpha: 1.0)
+        label.attributedStringValue = NSAttributedString(
+            string: text,
+            attributes: [
+                .foregroundColor: fg,
+                .font: NSFont.systemFont(ofSize: 11, weight: active ? .semibold : .regular),
+            ]
+        )
+        layer?.backgroundColor = accentColor.withAlphaComponent(active ? 0.22 : 0.12).cgColor
+        layer?.borderWidth = active ? 1.0 : 0.7
+        layer?.borderColor = accentColor.withAlphaComponent(active ? 0.42 : 0.22).cgColor
+    }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, StatusDotHoverDelegate {
     var statusItem: NSStatusItem!
     var appMenu: NSMenu!
     var pythonProcess: Process?
@@ -88,41 +322,125 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var showRemaining = false
     var toggleUsageModeItem: NSMenuItem!
     var lbToggleActionTitle: NSTextField!
+    var toggleShortcutText: String = "⌘M"
+    var lastPayload: [String: Any]?
 
     var lbHeader: NSTextField!
     var lbClaudeTitle: NSTextField!
     var lbCodexTitle: NSTextField!
 
     var lbClaudeSessionTop: NSTextField!
-    var lbClaudeSessionBottom: NSTextField!
+    var claudeSessionBarView: ProgressBarMenuRowView!
+    var claudeSessionTopItem: NSMenuItem!
+    var claudeSessionBarItem: NSMenuItem!
     var claudeSessionResetItem: NSMenuItem!
     var lbClaudeSessionResetLine: NSTextField!
     var claudeCappedItem: NSMenuItem!
     var lbClaudeCapped: NSTextField!
     var lbClaudeWeeklyTop: NSTextField!
-    var lbClaudeWeeklyBottom: NSTextField!
+    var claudeWeeklyBarView: ProgressBarMenuRowView!
+    var lbClaudeWeeklyResetLine: NSTextField!
+    var claudeWeeklyDividerItem: NSMenuItem!
+    var claudeWeeklyTopItem: NSMenuItem!
+    var claudeWeeklyBarItem: NSMenuItem!
+    var claudeWeeklyResetItem: NSMenuItem!
 
     var lbCodexSessionTop: NSTextField!
-    var lbCodexSessionBottom: NSTextField!
+    var codexSessionBarView: ProgressBarMenuRowView!
+    var codexSessionTopItem: NSMenuItem!
+    var codexSessionBarItem: NSMenuItem!
     var codexSessionResetItem: NSMenuItem!
     var lbCodexSessionResetLine: NSTextField!
     var codexCappedItem: NSMenuItem!
     var lbCodexCapped: NSTextField!
     var lbCodexWeeklyTop: NSTextField!
-    var lbCodexWeeklyBottom: NSTextField!
+    var codexWeeklyBarView: ProgressBarMenuRowView!
+    var lbCodexWeeklyResetLine: NSTextField!
+    var codexWeeklyDividerItem: NSMenuItem!
+    var codexWeeklyTopItem: NSMenuItem!
+    var codexWeeklyBarItem: NSMenuItem!
+    var codexWeeklyResetItem: NSMenuItem!
+    var claudeIsCapped = false
+    var codexIsCapped = false
+    var claudeWeeklyIsCapped = false
+    var codexWeeklyIsCapped = false
 
     var pulseOn = false
-    let rowWidth: CGFloat = 350
-    let textWidth: CGFloat = 326
-    let columns = 50
+    let rowWidth: CGFloat = 360
+    let textWidth: CGFloat = 340
+    let columns = 54
+    let textLeftX: CGFloat = 12
+    let barInsetX: CGFloat = 14
 
-    let usageRed = NSColor(calibratedRed: 0.84, green: 0.27, blue: 0.27, alpha: 1.0)
-    let usageAmber = NSColor(calibratedRed: 0.66, green: 0.45, blue: 0.00, alpha: 1.0)
-    let usageGreen = NSColor.systemGreen
-    let panelTeal = NSColor(calibratedRed: 0.08, green: 0.22, blue: 0.24, alpha: 0.90)
-    let actionHoverTeal = NSColor(calibratedRed: 0.12, green: 0.30, blue: 0.33, alpha: 0.98)
-    let headerText = NSColor(calibratedRed: 0.95, green: 0.98, blue: 0.98, alpha: 1.0)
-    let dimText = NSColor(calibratedRed: 0.86, green: 0.94, blue: 0.94, alpha: 1.0)
+    let usageRed = NSColor(calibratedRed: 0.84, green: 0.67, blue: 0.42, alpha: 1.0)
+    let usageAmber = NSColor(calibratedRed: 0.86, green: 0.70, blue: 0.45, alpha: 1.0)
+    let usageGreen = NSColor(calibratedRed: 0.3686, green: 0.5216, blue: 0.5686, alpha: 1.0) // #5E8591
+    let usageHealthyGold = NSColor(calibratedRed: 0.8667, green: 0.7216, blue: 0.3569, alpha: 1.0)
+    let usageCriticalAmber = NSColor(calibratedRed: 0.82, green: 0.67, blue: 0.38, alpha: 1.0)
+    let usageCriticalRed = NSColor(calibratedRed: 1.00, green: 0.18, blue: 0.24, alpha: 1.0)
+    let usageCappedMuted = NSColor(calibratedRed: 0.60, green: 0.57, blue: 0.52, alpha: 1.0)
+    let panelTeal = NSColor(calibratedRed: 0.11, green: 0.13, blue: 0.17, alpha: 0.92)
+    let actionHoverTeal = NSColor(calibratedRed: 0.16, green: 0.18, blue: 0.22, alpha: 0.95)
+    let subBoxTeal = NSColor(calibratedRed: 0.12, green: 0.14, blue: 0.18, alpha: 0.94)
+    let subBoxStroke = NSColor(calibratedWhite: 1.0, alpha: 0.06)
+    let headerText = NSColor(calibratedRed: 0.94, green: 0.95, blue: 0.96, alpha: 1.0)
+    let dimText = NSColor(calibratedRed: 0.70, green: 0.73, blue: 0.78, alpha: 1.0)
+    // Identity colors: separate from usage-state colors (green/amber/red bars).
+    // Brown palette accents per request: one dark + one light.
+    let claudeHeaderTint = NSColor(calibratedRed: 0.95, green: 0.94, blue: 0.90, alpha: 1.0)
+    let codexHeaderTint = NSColor(calibratedRed: 0.78, green: 0.68, blue: 0.42, alpha: 1.0)
+    // Subtle section differentiation for Claude/Codex blocks.
+    let claudePanelTint = NSColor(calibratedRed: 0.125, green: 0.145, blue: 0.185, alpha: 0.94)
+    let codexPanelTint = NSColor(calibratedRed: 0.085, green: 0.125, blue: 0.135, alpha: 0.94)
+    let footerPanelTint = NSColor(calibratedRed: 0.105, green: 0.125, blue: 0.165, alpha: 0.94)
+    let claudeSubBoxTint = NSColor(calibratedRed: 0.125, green: 0.145, blue: 0.185, alpha: 0.94)
+    let codexSubBoxTint = NSColor(calibratedRed: 0.085, green: 0.125, blue: 0.135, alpha: 0.94)
+    var sectionViews: [String: [NSView]] = ["claude": [], "codex": []]
+    var sectionHoverCount: [String: Int] = ["claude": 0, "codex": 0]
+    var baseRowBackgrounds: [ObjectIdentifier: CGColor] = [:]
+    var lastDataMTime: Date?
+    var claudeWeeklyDotTipView: StatusDotTooltipView?
+    var codexSessionDotTipView: StatusDotTooltipView?
+    var codexWeeklyDotTipView: StatusDotTooltipView?
+    var statusDotPopover: NSPopover?
+    var statusDotRows: [String: StatusTooltipRowView] = [:]
+    var statusDotTexts: [String: String] = [:]
+    var activeStatusDotKey: String?
+    var pendingPopoverHide: DispatchWorkItem?
+
+    private let shortClockRegex = try! NSRegularExpression(pattern: #"\b\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?\b"#)
+    private let shortHmRegex = try! NSRegularExpression(pattern: #"\b\d{1,2}:\d{2}\b"#)
+    private lazy var uiClockFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = .autoupdatingCurrent
+        f.timeStyle = .short
+        f.dateStyle = .none
+        return f
+    }()
+    private lazy var parser12HourFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = .autoupdatingCurrent
+        f.dateFormat = "h:mm a"
+        return f
+    }()
+
+    func panelColor(for group: String?) -> NSColor {
+        switch group {
+        case "claude":
+            return claudePanelTint
+        case "codex":
+            return codexPanelTint
+        case "footer":
+            return footerPanelTint
+        default:
+            return panelTeal
+        }
+    }
+
+    func subBoxColor(for group: String?) -> NSColor {
+        // Keep sub-rows on the same tint as the section to avoid seam/gap feel.
+        panelColor(for: group)
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
@@ -133,7 +451,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func makeRow(text: String, color: NSColor, size: CGFloat = 13, bold: Bool = false, height: CGFloat = 22, mono: Bool = false) -> (NSMenuItem, NSTextField) {
+    func makeRow(
+        text: String,
+        color: NSColor,
+        size: CGFloat = 13,
+        bold: Bool = false,
+        height: CGFloat = 22,
+        mono: Bool = false,
+        hoverGroup: String? = nil
+    ) -> (NSMenuItem, NSTextField) {
         let font: NSFont
         if mono {
             font = NSFont.monospacedDigitSystemFont(ofSize: size, weight: bold ? .semibold : .regular)
@@ -150,20 +476,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         tf.isSelectable = false
         tf.lineBreakMode = .byClipping
 
-        let view = NSView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+        let view: NSView
+        if let group = hoverGroup {
+            let hv = SectionHoverRowView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+            hv.group = group
+            hv.delegate = self
+            view = hv
+        } else {
+            view = NSView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+        }
         view.wantsLayer = true
-        view.layer?.backgroundColor = panelTeal.cgColor
+        let rowBG = panelColor(for: hoverGroup)
+        view.layer?.backgroundColor = rowBG.cgColor
+        baseRowBackgrounds[ObjectIdentifier(view)] = rowBG.cgColor
         view.addSubview(tf)
+
+        if let group = hoverGroup {
+            sectionViews[group, default: []].append(view)
+        }
 
         let item = NSMenuItem()
         item.view = view
         return (item, tf)
     }
 
-    func makeSeparatorRow(height: CGFloat = 10) -> NSMenuItem {
+    func makeSeparatorRow(height: CGFloat = 10, group: String? = nil) -> NSMenuItem {
         let view = NSView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
         view.wantsLayer = true
-        view.layer?.backgroundColor = panelTeal.cgColor
+        let rowBG = panelColor(for: group)
+        view.layer?.backgroundColor = rowBG.cgColor
+        baseRowBackgrounds[ObjectIdentifier(view)] = rowBG.cgColor
 
         let line = NSView(frame: NSRect(x: 16, y: (height - 1) / 2, width: rowWidth - 32, height: 1))
         line.wantsLayer = true
@@ -175,43 +517,118 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    func makeActionRow(title: String, shortcut: String, action: Selector, keyEquivalent: String) -> (NSMenuItem, NSTextField) {
-        let view = ClickableMenuRowView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: 30))
+    func makeTightDividerRow(group: String? = nil) -> NSMenuItem {
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: 2))
         view.wantsLayer = true
-        view.layer?.backgroundColor = panelTeal.cgColor
-        view.normalColor = panelTeal
-        view.hoverColor = actionHoverTeal
-        view.currentColor = panelTeal
+        let rowBG = panelColor(for: group)
+        view.layer?.backgroundColor = rowBG.cgColor
+        baseRowBackgrounds[ObjectIdentifier(view)] = rowBG.cgColor
 
-        let left = NSTextField(frame: NSRect(x: 12, y: 5, width: textWidth - 44, height: 20))
-        left.attributedStringValue = NSAttributedString(
-            string: "  \(title)",
-            attributes: [
-                .foregroundColor: headerText,
-                .font: NSFont.systemFont(ofSize: 13, weight: .regular),
-            ]
-        )
+        let line = NSView(frame: NSRect(x: 16, y: 0, width: rowWidth - 32, height: 1))
+        line.wantsLayer = true
+        line.layer?.backgroundColor = NSColor(calibratedWhite: 1.0, alpha: 0.16).cgColor
+        view.addSubview(line)
+
+        let item = NSMenuItem()
+        item.view = view
+        return item
+    }
+
+    func makeDottedDividerRow(hoverGroup: String? = nil, height: CGFloat = 6) -> NSMenuItem {
+        let view: NSView
+        if let group = hoverGroup {
+            let hv = SectionHoverRowView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+            hv.group = group
+            hv.delegate = self
+            view = hv
+        } else {
+            view = NSView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+        }
+        view.wantsLayer = true
+        let rowBG = subBoxColor(for: hoverGroup)
+        view.layer?.backgroundColor = rowBG.cgColor
+        baseRowBackgrounds[ObjectIdentifier(view)] = rowBG.cgColor
+
+        let line = CAShapeLayer()
+        // Place divider near center to keep breathing room both above and below.
+        let y = height / 2.0
+        let p = CGMutablePath()
+        p.move(to: CGPoint(x: 16, y: y))
+        p.addLine(to: CGPoint(x: rowWidth - 16, y: y))
+        line.path = p
+        line.strokeColor = NSColor(calibratedWhite: 1.0, alpha: 0.16).cgColor
+        line.lineWidth = 1.0
+        line.lineDashPattern = [3, 3]
+        view.layer?.addSublayer(line)
+
+        if let group = hoverGroup {
+            sectionViews[group, default: []].append(view)
+        }
+        let item = NSMenuItem()
+        item.view = view
+        return item
+    }
+
+    func makeSpacerRow(height: CGFloat = 8, hoverGroup: String? = nil) -> NSMenuItem {
+        let view: NSView
+        if let group = hoverGroup {
+            let hv = SectionHoverRowView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+            hv.group = group
+            hv.delegate = self
+            view = hv
+        } else {
+            view = NSView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+        }
+        view.wantsLayer = true
+        let rowBG = panelColor(for: hoverGroup)
+        view.layer?.backgroundColor = rowBG.cgColor
+        baseRowBackgrounds[ObjectIdentifier(view)] = rowBG.cgColor
+        if let group = hoverGroup {
+            sectionViews[group, default: []].append(view)
+        }
+        let item = NSMenuItem()
+        item.view = view
+        return item
+    }
+
+    func makeProgressBarRow(height: CGFloat = 20, hoverGroup: String? = nil) -> (NSMenuItem, ProgressBarMenuRowView) {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+        container.wantsLayer = true
+        let rowBG = subBoxColor(for: hoverGroup)
+        container.layer?.backgroundColor = rowBG.cgColor
+        baseRowBackgrounds[ObjectIdentifier(container)] = rowBG.cgColor
+        if let group = hoverGroup {
+            sectionViews[group, default: []].append(container)
+        }
+
+        let bar = ProgressBarMenuRowView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+        bar.fillColor = usageGreen
+        bar.trackColor = NSColor(calibratedRed: 0.29, green: 0.32, blue: 0.31, alpha: 0.75)
+        container.addSubview(bar)
+
+        let item = NSMenuItem()
+        item.view = container
+        return (item, bar)
+    }
+
+    func makeActionRow(title: String, shortcut: String, action: Selector, keyEquivalent: String) -> (NSMenuItem, NSTextField) {
+        let view = ClickableMenuRowView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: 24))
+        view.wantsLayer = true
+        let footerBG = panelColor(for: "footer")
+        view.layer?.backgroundColor = footerBG.cgColor
+        baseRowBackgrounds[ObjectIdentifier(view)] = footerBG.cgColor
+        view.normalColor = footerBG
+        view.hoverColor = actionHoverTeal
+        view.currentColor = footerBG
+
+        let left = NSTextField(frame: NSRect(x: 12, y: 3, width: textWidth, height: 18))
         left.drawsBackground = false
         left.isBezeled = false
         left.isEditable = false
         left.isSelectable = false
-
-        let right = NSTextField(frame: NSRect(x: rowWidth - 56, y: 5, width: 44, height: 20))
-        right.alignment = .right
-        right.attributedStringValue = NSAttributedString(
-            string: shortcut,
-            attributes: [
-                .foregroundColor: dimText,
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular),
-            ]
-        )
-        right.drawsBackground = false
-        right.isBezeled = false
-        right.isEditable = false
-        right.isSelectable = false
+        setActionRowLabel(left, title: title, shortcut: shortcut)
 
         view.addSubview(left)
-        view.addSubview(right)
 
         let item = NSMenuItem()
         item.view = view
@@ -228,6 +645,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return (item, left)
     }
 
+    func setActionRowLabel(_ lbl: NSTextField, title: String, shortcut: String) {
+        _ = shortcut
+        let text = "  \(title)"
+        lbl.attributedStringValue = NSAttributedString(
+            string: text,
+            attributes: [
+                .foregroundColor: headerText,
+                .font: NSFont.systemFont(ofSize: 11.5, weight: .regular),
+            ]
+        )
+    }
+
+    func tightenMeterLabelGap(_ lbl: NSTextField) {
+        var f = lbl.frame
+        f.origin.y = -1.0
+        lbl.frame = f
+    }
+
+    func setWeeklyLabelGap(_ lbl: NSTextField) {
+        var f = lbl.frame
+        // Increase breathing room below dotted divider and above WEEKLY.
+        f.origin.y = -2.0
+        lbl.frame = f
+    }
+
     func buildMenu() {
         appMenu = NSMenu()
         appMenu.autoenablesItems = false
@@ -236,76 +678,181 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let header = headerText
         let dim = dimText
 
-        let (h, lbH) = makeRow(text: "  ● Claude/Codex_Live Tracker                ↻ --:--:--", color: header, size: 13, bold: true, height: 30, mono: true)
+        let (h, lbH) = makeRow(text: "  ● Claude & Codex_Live Tracker                   --:--", color: header, size: 13, bold: true, height: 30, mono: false)
         lbHeader = lbH
+        if let hv = h.view {
+            hv.wantsLayer = true
+            hv.layer?.backgroundColor = NSColor(calibratedRed: 0.10, green: 0.12, blue: 0.16, alpha: 0.95).cgColor
+        }
         appMenu.addItem(h)
-        appMenu.addItem(makeSeparatorRow())
+        let claudeStartSpacer = makeSpacerRow(height: 10, hoverGroup: "claude")
+        appMenu.addItem(claudeStartSpacer)
 
-        let (clh, lbCLH) = makeRow(text: "  Claude", color: header, size: 14, bold: true, height: 28)
+        let (clh, lbCLH) = makeRow(text: "  Claude", color: header, size: 14, bold: true, height: 30, hoverGroup: "claude")
         lbClaudeTitle = lbCLH
+        styleSubBoxRow(clh.view, corners: [], group: "claude")
         appMenu.addItem(clh)
 
-        let (cst, lbCST) = makeRow(text: "  Session                                                —", color: header, size: 12, bold: true, height: 24, mono: true)
+        let (cst, lbCST) = makeRow(text: "  Session - 5h                                   —", color: header, size: 12, bold: true, height: 16, mono: true, hoverGroup: "claude")
+        claudeSessionTopItem = cst
         lbClaudeSessionTop = lbCST
+        tightenMeterLabelGap(lbCST)
         appMenu.addItem(cst)
 
-        let (csb, lbCSB) = makeRow(text: "  5h window    ░░░░░░░░░░░░░░░░░░░░░░                   —", color: dim, size: 11, height: 22, mono: true)
-        lbClaudeSessionBottom = lbCSB
+        let (csb, cBar) = makeProgressBarRow(height: 12, hoverGroup: "claude")
+        claudeSessionBarItem = csb
+        claudeSessionBarView = cBar
         appMenu.addItem(csb)
 
-        let (csr, lbCSR) = makeRow(text: "  resets in —", color: dim, size: 11, height: 18, mono: true)
+        let (csr, lbCSR) = makeRow(text: "  Resets in —", color: dim, size: 11, height: 16, mono: true, hoverGroup: "claude")
         claudeSessionResetItem = csr
         lbClaudeSessionResetLine = lbCSR
         appMenu.addItem(csr)
 
-        let (cap, lbCap) = makeRow(text: "  Session capped. Unlock in —", color: header, size: 12, bold: true, height: 30, mono: true)
+        let (cap, lbCap) = makeRow(text: "  Unlocks at —                                     —", color: header, size: 12, bold: true, height: 18, mono: true, hoverGroup: "claude")
         claudeCappedItem = cap
         lbClaudeCapped = lbCap
         claudeCappedItem.isHidden = true
+        if let v = claudeCappedItem.view {
+            v.wantsLayer = true
+            v.layer?.backgroundColor = subBoxColor(for: "claude").cgColor
+            v.layer?.cornerRadius = 0
+        }
         appMenu.addItem(cap)
 
-        let (cwt, lbCWT) = makeRow(text: "  Weekly                                                 —", color: header, size: 12, bold: true, height: 24, mono: true)
+        let claudeDivider = makeDottedDividerRow(hoverGroup: "claude", height: 10)
+        claudeWeeklyDividerItem = claudeDivider
+        appMenu.addItem(claudeDivider)
+
+        let (cwt, lbCWT) = makeRow(text: "  WEEKLY                                                —", color: header, size: 12, bold: true, height: 16, mono: true, hoverGroup: "claude")
         lbClaudeWeeklyTop = lbCWT
+        claudeWeeklyTopItem = cwt
+        setWeeklyLabelGap(lbCWT)
         appMenu.addItem(cwt)
 
-        let (cwb, lbCWB) = makeRow(text: "  all models   ░░░░░░░░░░░░░░░░░░░░░░                pace —", color: dim, size: 11, height: 22, mono: true)
-        lbClaudeWeeklyBottom = lbCWB
+        let (cwb, cwBar) = makeProgressBarRow(height: 12, hoverGroup: "claude")
+        claudeWeeklyBarView = cwBar
+        claudeWeeklyBarItem = cwb
         appMenu.addItem(cwb)
 
-        appMenu.addItem(makeSeparatorRow())
+        let (cwr, lbCWR) = makeRow(text: "  resets in —                                   —", color: dim, size: 11, height: 22, mono: true, hoverGroup: "claude")
+        lbClaudeWeeklyResetLine = lbCWR
+        claudeWeeklyResetItem = cwr
+        var cwrFrame = lbCWR.frame
+        cwrFrame.origin.y += 1.0
+        lbCWR.frame = cwrFrame
+        appMenu.addItem(cwr)
 
-        let (cxh, lbCXH) = makeRow(text: "  Codex", color: header, size: 14, bold: true, height: 28)
+        // Small top breathing room before Codex header (inside Codex block tint).
+        let codexStartSpacer = makeSpacerRow(height: 4, hoverGroup: "codex")
+        appMenu.addItem(codexStartSpacer)
+
+        let (cxh, lbCXH) = makeRow(text: "  Codex", color: header, size: 14, bold: true, height: 30, hoverGroup: "codex")
         lbCodexTitle = lbCXH
+        styleSubBoxRow(cxh.view, corners: [], group: "codex")
         appMenu.addItem(cxh)
 
-        let (ost, lbOST) = makeRow(text: "  Session                                                —", color: header, size: 12, bold: true, height: 24, mono: true)
+        let (ost, lbOST) = makeRow(text: "  Session - 5h                                   —", color: header, size: 12, bold: true, height: 16, mono: true, hoverGroup: "codex")
+        codexSessionTopItem = ost
         lbCodexSessionTop = lbOST
+        tightenMeterLabelGap(lbOST)
         appMenu.addItem(ost)
 
-        let (osb, lbOSB) = makeRow(text: "  5h window    ░░░░░░░░░░░░░░░░░░░░░░                   —", color: dim, size: 11, height: 22, mono: true)
-        lbCodexSessionBottom = lbOSB
+        let (osb, oBar) = makeProgressBarRow(height: 12, hoverGroup: "codex")
+        codexSessionBarItem = osb
+        codexSessionBarView = oBar
         appMenu.addItem(osb)
 
-        let (osr, lbOSR) = makeRow(text: "  resets in —", color: dim, size: 11, height: 18, mono: true)
+        let (osr, lbOSR) = makeRow(text: "  Resets in —", color: dim, size: 11, height: 16, mono: true, hoverGroup: "codex")
         codexSessionResetItem = osr
         lbCodexSessionResetLine = lbOSR
         appMenu.addItem(osr)
 
-        let (ocap, lbOCap) = makeRow(text: "  Session capped. Unlock in —", color: header, size: 12, bold: true, height: 30, mono: true)
+        let (ocap, lbOCap) = makeRow(text: "  Unlocks at —                                     —", color: header, size: 12, bold: true, height: 18, mono: true, hoverGroup: "codex")
         codexCappedItem = ocap
         lbCodexCapped = lbOCap
         codexCappedItem.isHidden = true
+        if let v = codexCappedItem.view {
+            v.wantsLayer = true
+            v.layer?.backgroundColor = subBoxColor(for: "codex").cgColor
+            v.layer?.cornerRadius = 0
+        }
         appMenu.addItem(ocap)
 
-        let (owt, lbOWT) = makeRow(text: "  Weekly                                                 —", color: header, size: 12, bold: true, height: 24, mono: true)
+        let codexDivider = makeDottedDividerRow(hoverGroup: "codex", height: 10)
+        codexWeeklyDividerItem = codexDivider
+        appMenu.addItem(codexDivider)
+
+        let (owt, lbOWT) = makeRow(text: "  WEEKLY                                                —", color: header, size: 12, bold: true, height: 16, mono: true, hoverGroup: "codex")
         lbCodexWeeklyTop = lbOWT
+        codexWeeklyTopItem = owt
+        setWeeklyLabelGap(lbOWT)
         appMenu.addItem(owt)
 
-        let (owb, lbOWB) = makeRow(text: "  resets —    ░░░░░░░░░░░░░░░░░░░░░░               on track", color: dim, size: 11, height: 22, mono: true)
-        lbCodexWeeklyBottom = lbOWB
+        let (owb, owBar) = makeProgressBarRow(height: 12, hoverGroup: "codex")
+        codexWeeklyBarView = owBar
+        codexWeeklyBarItem = owb
         appMenu.addItem(owb)
 
-        appMenu.addItem(makeSeparatorRow())
+        let (owr, lbOWR) = makeRow(text: "  resets in —                                   —", color: dim, size: 11, height: 22, mono: true, hoverGroup: "codex")
+        lbCodexWeeklyResetLine = lbOWR
+        codexWeeklyResetItem = owr
+        var owrFrame = lbOWR.frame
+        owrFrame.origin.y += 1.0
+        lbOWR.frame = owrFrame
+        appMenu.addItem(owr)
+
+        // Inner card styling: SESSION and WEEKLY as separate boxes.
+        applySubBoxStyle(top: cst.view, middle: csb.view, bottom: csr.view, group: "claude")
+        applySubBoxStyle(top: cst.view, middle: csb.view, bottom: cap.view, group: "claude")
+        applySubBoxStyle(top: cwt.view, middle: cwb.view, bottom: cwr.view, group: "claude")
+        applySectionOutline(
+            [
+                claudeStartSpacer.view,
+                clh.view,
+                cst.view,
+                csb.view,
+                csr.view,
+                cap.view,
+                claudeDivider.view,
+                cwt.view,
+                cwb.view,
+                cwr.view,
+            ].compactMap { $0 },
+            color: NSColor(calibratedWhite: 1.0, alpha: 0.16)
+        )
+        applySubBoxStyle(top: ost.view, middle: osb.view, bottom: osr.view, group: "codex")
+        applySubBoxStyle(top: ost.view, middle: osb.view, bottom: ocap.view, group: "codex")
+        applySubBoxStyle(top: owt.view, middle: owb.view, bottom: owr.view, group: "codex")
+        applySectionOutline(
+            [
+                codexStartSpacer.view,
+                cxh.view,
+                ost.view,
+                osb.view,
+                osr.view,
+                ocap.view,
+                codexDivider.view,
+                owt.view,
+                owb.view,
+                owr.view,
+            ].compactMap { $0 },
+            color: NSColor(calibratedWhite: 1.0, alpha: 0.16)
+        )
+
+        // Phase A2.2: keep weekly rows visible to match reference.
+        claudeWeeklyDividerItem.isHidden = false
+        claudeWeeklyTopItem.isHidden = false
+        claudeWeeklyBarItem.isHidden = false
+        claudeWeeklyResetItem.isHidden = false
+        codexWeeklyDividerItem.isHidden = false
+        codexWeeklyTopItem.isHidden = false
+        codexWeeklyBarItem.isHidden = false
+        codexWeeklyResetItem.isHidden = false
+        claudeSessionResetItem.isHidden = false
+        codexSessionResetItem.isHidden = false
+
+        appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "footer"))
 
         let (toggleItem, lbToggle) = makeActionRow(
             title: "Show Remaining %",
@@ -318,7 +865,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(toggleItem)
 
         let (openClaudeItem, _) = makeActionRow(
-            title: "Open Claude Analytics",
+            title: "↗ Open Claude Analytics",
             shortcut: "⌘L",
             action: #selector(openClaudeAnalytics),
             keyEquivalent: "l"
@@ -326,17 +873,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(openClaudeItem)
 
         let (openCodexItem, _) = makeActionRow(
-            title: "Open Codex Analytics",
+            title: "↗ Open Codex Analytics",
             shortcut: "⌘O",
             action: #selector(openCodexAnalytics),
             keyEquivalent: "o"
         )
         appMenu.addItem(openCodexItem)
 
-        appMenu.addItem(makeSeparatorRow())
+        appMenu.addItem(makeSeparatorRow(group: "footer"))
 
         let (restartItem, _) = makeActionRow(
-            title: "Refresh Tracker",
+            title: "↻ Refresh now",
             shortcut: "⌘R",
             action: #selector(restartTracker),
             keyEquivalent: "r"
@@ -352,13 +899,311 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         appMenu.addItem(quitItem)
     }
 
+    func sectionHoverChanged(group: String, delta: Int) {
+        let current = sectionHoverCount[group, default: 0]
+        let next = max(0, current + delta)
+        sectionHoverCount[group] = next
+        let active = next > 0
+        let rows = sectionViews[group] ?? []
+        for row in rows {
+            row.wantsLayer = true
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.10)
+            if active {
+                if let base = baseRowBackgrounds[ObjectIdentifier(row)] {
+                    row.layer?.backgroundColor = base
+                }
+                row.layer?.shadowColor = NSColor.black.withAlphaComponent(0.30).cgColor
+                row.layer?.shadowOpacity = 0.22
+                row.layer?.shadowRadius = 5
+                row.layer?.shadowOffset = CGSize(width: 0, height: -1)
+                row.layer?.transform = CATransform3DMakeScale(1.006, 1.006, 1)
+            } else {
+                if let base = baseRowBackgrounds[ObjectIdentifier(row)] {
+                    row.layer?.backgroundColor = base
+                } else {
+                    row.layer?.backgroundColor = panelTeal.cgColor
+                }
+                row.layer?.shadowOpacity = 0.0
+                row.layer?.transform = CATransform3DIdentity
+            }
+            CATransaction.commit()
+        }
+        applyHoverDisclosure()
+    }
+
+    func applyHoverDisclosure() {
+        if claudeWeeklyIsCapped {
+            claudeSessionTopItem.isHidden = true
+            claudeSessionBarItem.isHidden = true
+            claudeSessionResetItem.isHidden = true
+            claudeCappedItem.isHidden = true
+        } else {
+            claudeSessionTopItem.isHidden = false
+            claudeSessionBarItem.isHidden = false
+            claudeSessionResetItem.isHidden = claudeIsCapped
+            claudeCappedItem.isHidden = !claudeIsCapped
+        }
+        if codexWeeklyIsCapped {
+            codexSessionTopItem.isHidden = true
+            codexSessionBarItem.isHidden = true
+            codexSessionResetItem.isHidden = true
+            codexCappedItem.isHidden = true
+        } else {
+            codexSessionTopItem.isHidden = false
+            codexSessionBarItem.isHidden = false
+            codexSessionResetItem.isHidden = codexIsCapped
+            codexCappedItem.isHidden = !codexIsCapped
+        }
+    }
+
+    func applySubBoxStyle(top: NSView?, middle: NSView?, bottom: NSView?, group: String?) {
+        styleSubBoxRow(top, corners: [.layerMinXMinYCorner, .layerMaxXMinYCorner], group: group)
+        styleSubBoxRow(middle, corners: [], group: group)
+        styleSubBoxRow(bottom, corners: [.layerMinXMaxYCorner, .layerMaxXMaxYCorner], group: group)
+    }
+
+    func applySectionOutline(_ rows: [NSView], color: NSColor) {
+        let borderName = "section-outline"
+        let insetX: CGFloat = 8
+        for (idx, row) in rows.enumerated() {
+            row.wantsLayer = true
+            row.layer?.sublayers?.removeAll(where: { $0.name == borderName })
+            let isFirst = idx == 0
+            let isLast = idx == rows.count - 1
+
+            let left = CAShapeLayer()
+            left.name = borderName
+            let lp = CGMutablePath()
+            lp.move(to: CGPoint(x: insetX, y: 0))
+            lp.addLine(to: CGPoint(x: insetX, y: row.bounds.height))
+            left.path = lp
+            left.strokeColor = color.cgColor
+            left.lineWidth = 1
+            row.layer?.addSublayer(left)
+
+            let right = CAShapeLayer()
+            right.name = borderName
+            let rp = CGMutablePath()
+            rp.move(to: CGPoint(x: row.bounds.width - insetX, y: 0))
+            rp.addLine(to: CGPoint(x: row.bounds.width - insetX, y: row.bounds.height))
+            right.path = rp
+            right.strokeColor = color.cgColor
+            right.lineWidth = 1
+            row.layer?.addSublayer(right)
+
+            if isFirst {
+                let top = CAShapeLayer()
+                top.name = borderName
+                let tp = CGMutablePath()
+                tp.move(to: CGPoint(x: insetX, y: row.bounds.height - 0.5))
+                tp.addLine(to: CGPoint(x: row.bounds.width - insetX, y: row.bounds.height - 0.5))
+                top.path = tp
+                top.strokeColor = color.cgColor
+                top.lineWidth = 1
+                row.layer?.addSublayer(top)
+            }
+
+            if isLast {
+                let bottom = CAShapeLayer()
+                bottom.name = borderName
+                let bp = CGMutablePath()
+                bp.move(to: CGPoint(x: insetX, y: 0.5))
+                bp.addLine(to: CGPoint(x: row.bounds.width - insetX, y: 0.5))
+                bottom.path = bp
+                bottom.strokeColor = color.cgColor
+                bottom.lineWidth = 1
+                row.layer?.addSublayer(bottom)
+            }
+        }
+    }
+
+    func styleSubBoxRow(_ row: NSView?, corners: CACornerMask, group: String?) {
+        guard let row else { return }
+        row.wantsLayer = true
+        let rowBG = subBoxColor(for: group)
+        row.layer?.backgroundColor = rowBG.cgColor
+        baseRowBackgrounds[ObjectIdentifier(row)] = rowBG.cgColor
+        row.layer?.cornerRadius = 0
+        row.layer?.borderWidth = 0
+    }
+
     func buildStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let btn = statusItem.button {
-            btn.title = "C ⚪⚪  O ⚪⚪"
-            btn.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+            btn.title = "CL⚪ CO⚪⚪"
+            btn.toolTip = nil
+            // Use a smaller proportional font so CL/CO letters are visually narrower than monospaced glyphs.
+            btn.font = NSFont.systemFont(ofSize: 11, weight: .regular)
         }
         statusItem.menu = appMenu
+    }
+
+    func statusTitleWidth(_ text: String, font: NSFont) -> CGFloat {
+        let attrs: [NSAttributedString.Key: Any] = [.font: font]
+        return (text as NSString).size(withAttributes: attrs).width
+    }
+
+    func ensureStatusDotTooltipViews(on button: NSStatusBarButton) {
+        if claudeWeeklyDotTipView == nil {
+            let v = StatusDotTooltipView(frame: .zero)
+            v.metricKey = "cl_weekly"
+            v.hoverDelegate = self
+            button.addSubview(v)
+            claudeWeeklyDotTipView = v
+        }
+        if codexSessionDotTipView == nil {
+            let v = StatusDotTooltipView(frame: .zero)
+            v.metricKey = "co_5h"
+            v.hoverDelegate = self
+            button.addSubview(v)
+            codexSessionDotTipView = v
+        }
+        if codexWeeklyDotTipView == nil {
+            let v = StatusDotTooltipView(frame: .zero)
+            v.metricKey = "co_weekly"
+            v.hoverDelegate = self
+            button.addSubview(v)
+            codexWeeklyDotTipView = v
+        }
+    }
+
+    func ensureStatusDotPopover() {
+        if statusDotPopover != nil { return }
+
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 222, height: 82))
+        content.wantsLayer = true
+        content.layer?.cornerRadius = 9
+        content.layer?.masksToBounds = true
+        content.layer?.backgroundColor = NSColor(calibratedWhite: 0.15, alpha: 0.96).cgColor
+        content.layer?.borderWidth = 1
+        content.layer?.borderColor = NSColor(calibratedWhite: 1.0, alpha: 0.12).cgColor
+
+        let rowH: CGFloat = 22
+        let rowW: CGFloat = 208
+        let startX: CGFloat = 7
+        let topY: CGFloat = 53
+        let gap: CGFloat = 3
+
+        let clRow = StatusTooltipRowView(accentColor: NSColor(calibratedRed: 0.94, green: 0.44, blue: 0.47, alpha: 1.0))
+        clRow.frame = NSRect(x: startX, y: topY, width: rowW, height: rowH)
+        let co5hRow = StatusTooltipRowView(accentColor: NSColor(calibratedRed: 0.35, green: 0.70, blue: 0.52, alpha: 1.0))
+        co5hRow.frame = NSRect(x: startX, y: topY - (rowH + gap), width: rowW, height: rowH)
+        let coWRow = StatusTooltipRowView(accentColor: NSColor(calibratedRed: 0.82, green: 0.68, blue: 0.42, alpha: 1.0))
+        coWRow.frame = NSRect(x: startX, y: topY - ((rowH + gap) * 2), width: rowW, height: rowH)
+
+        content.addSubview(clRow)
+        content.addSubview(co5hRow)
+        content.addSubview(coWRow)
+
+        statusDotRows["cl_weekly"] = clRow
+        statusDotRows["co_5h"] = co5hRow
+        statusDotRows["co_weekly"] = coWRow
+
+        let vc = NSViewController()
+        vc.view = content
+
+        let pop = NSPopover()
+        pop.behavior = .applicationDefined
+        pop.animates = false
+        pop.contentSize = content.frame.size
+        pop.contentViewController = vc
+        statusDotPopover = pop
+    }
+
+    func refreshStatusDotPopoverRows() {
+        let activeKey = activeStatusDotKey
+        let ordered: [String] = ["cl_weekly", "co_5h", "co_weekly"]
+        for key in ordered {
+            guard let row = statusDotRows[key] else { continue }
+            let text = statusDotTexts[key] ?? ""
+            row.update(text: text, active: key == activeKey)
+        }
+    }
+
+    func showStatusDotPopover(anchor: NSView) {
+        ensureStatusDotPopover()
+        refreshStatusDotPopoverRows()
+        guard let pop = statusDotPopover else { return }
+        if pop.isShown {
+            pop.close()
+        }
+        pop.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .maxY)
+    }
+
+    func hideStatusDotPopover() {
+        statusDotPopover?.close()
+    }
+
+    func statusDotHoverChanged(key: String, entered: Bool, anchor: NSView) {
+        pendingPopoverHide?.cancel()
+        pendingPopoverHide = nil
+        if entered {
+            activeStatusDotKey = key
+            showStatusDotPopover(anchor: anchor)
+            return
+        }
+        let hideTask = DispatchWorkItem { [weak self] in
+            self?.activeStatusDotKey = nil
+            self?.hideStatusDotPopover()
+        }
+        pendingPopoverHide = hideTask
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10, execute: hideTask)
+    }
+
+    func updateStatusDotTooltips(
+        claudeWeeklyValue: String,
+        codexSessionValue: String,
+        codexWeeklyValue: String,
+        cWDot: String,
+        oSDot: String,
+        oWDot: String
+    ) {
+        guard let button = statusItem.button else { return }
+        ensureStatusDotTooltipViews(on: button)
+
+        statusDotTexts["cl_weekly"] = "CL • Claude Weekly • \(claudeWeeklyValue)"
+        statusDotTexts["co_5h"] = "CO • Codex 5H • \(codexSessionValue)"
+        statusDotTexts["co_weekly"] = "CO • Codex Weekly • \(codexWeeklyValue)"
+        refreshStatusDotPopoverRows()
+
+        let font = button.font ?? NSFont.systemFont(ofSize: 11, weight: .regular)
+        let full = "CL\(cWDot) CO\(oSDot)\(oWDot)"
+        let totalW = statusTitleWidth(full, font: font)
+        let startX = max(0, floor((button.bounds.width - totalW) / 2.0))
+        let fullHeight = button.bounds.height
+
+        let cWStart = startX + statusTitleWidth("CL", font: font)
+        let cWWidth = statusTitleWidth(cWDot, font: font)
+        let oSStart = startX + statusTitleWidth("CL\(cWDot) CO", font: font)
+        let oSWidth = statusTitleWidth(oSDot, font: font)
+        let oWStart = startX + statusTitleWidth("CL\(cWDot) CO\(oSDot)", font: font)
+        let oWWidth = statusTitleWidth(oWDot, font: font)
+
+        let minHitW: CGFloat = 11
+        let pad: CGFloat = 2
+        claudeWeeklyDotTipView?.frame = NSRect(
+            x: cWStart - pad,
+            y: 0,
+            width: max(minHitW, cWWidth + pad * 2),
+            height: fullHeight
+        )
+        codexSessionDotTipView?.frame = NSRect(
+            x: oSStart - pad,
+            y: 0,
+            width: max(minHitW, oSWidth + pad * 2),
+            height: fullHeight
+        )
+        codexWeeklyDotTipView?.frame = NSRect(
+            x: oWStart - pad,
+            y: 0,
+            width: max(minHitW, oWWidth + pad * 2),
+            height: fullHeight
+        )
+        // Disable native tooltip bubbles to avoid duplicate tooltip UI with custom popover.
+        claudeWeeklyDotTipView?.toolTip = nil
+        codexSessionDotTipView?.toolTip = nil
+        codexWeeklyDotTipView?.toolTip = nil
     }
 
     func launchPython() {
@@ -371,7 +1216,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ]
         guard let script = candidates.first(where: { FileManager.default.fileExists(atPath: $0) }) else {
             DispatchQueue.main.async {
-                self.setLabel(self.lbHeader, self.twoCol("● Claude/Codex_Session Error", "↻ --:--:--", total: self.columns), color: self.usageRed, size: 13, bold: true, mono: true)
+                self.setLabel(self.lbHeader, self.twoCol("● Claude/Codex_Live Error", "updated --:--", total: self.columns), color: self.usageRed, size: 13, bold: true, mono: true)
             }
             return
         }
@@ -433,13 +1278,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func ensureFetcherHealthy() {
         let path = "/tmp/claude_tracker_data.json"
         let isRunning = pythonProcess?.isRunning ?? false
+        let staleThreshold: TimeInterval = 420 // must be greater than normal Python 5-min refresh
 
         if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
            let mtime = attrs[.modificationDate] as? Date {
             let age = Date().timeIntervalSince(mtime)
-            if age > 150 || !isRunning {
+            if age > staleThreshold || !isRunning {
                 pythonProcess?.terminate()
                 pythonProcess = nil
+                lastDataMTime = nil
                 launchPython()
             }
             return
@@ -451,10 +1298,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func loadData() {
-        let url = URL(fileURLWithPath: "/tmp/claude_tracker_data.json")
+        let path = "/tmp/claude_tracker_data.json"
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
+              let mtime = attrs[.modificationDate] as? Date
+        else { return }
+
+        if let last = lastDataMTime, mtime <= last {
+            return
+        }
+        lastDataMTime = mtime
+
+        let url = URL(fileURLWithPath: path)
         guard let data = try? Data(contentsOf: url),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else { return }
+        lastPayload = json
         DispatchQueue.main.async { self.updateUI(json) }
     }
 
@@ -468,42 +1326,143 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         lbl.attributedStringValue = NSAttributedString(string: text, attributes: [.foregroundColor: color, .font: font])
     }
 
-    func setMeterTopLabel(_ lbl: NSTextField, title: String, pct: String, pctColor: NSColor) {
-        let badge = "  \(title)  "
-        let text = twoCol(badge, pct, total: columns)
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
-        let attr = NSMutableAttributedString(string: text, attributes: [.foregroundColor: headerText, .font: font])
-        if let badgeRange = text.range(of: badge) {
-            let nsBadgeRange = NSRange(badgeRange, in: text)
-            attr.addAttribute(.backgroundColor, value: NSColor.black.withAlphaComponent(0.35), range: nsBadgeRange)
-            attr.addAttribute(.foregroundColor, value: NSColor.white, range: nsBadgeRange)
-            attr.addAttribute(.strokeColor, value: NSColor.white.withAlphaComponent(0.30), range: nsBadgeRange)
-            attr.addAttribute(.strokeWidth, value: -1.0, range: nsBadgeRange)
-
-            let emboss = NSShadow()
-            emboss.shadowColor = NSColor.black.withAlphaComponent(0.35)
-            emboss.shadowOffset = NSSize(width: 0, height: -1)
-            emboss.shadowBlurRadius = 1.2
-            attr.addAttribute(.shadow, value: emboss, range: nsBadgeRange)
+    func setMeterTopLabel(
+        _ lbl: NSTextField,
+        title: String,
+        subtitle: String,
+        pct: String,
+        pctColor: NSColor,
+        warning: Bool = false,
+        chip: String? = nil,
+        chipTooltip: String? = nil
+    ) {
+        let titleText = title.uppercased()
+        let subtitleText = subtitle.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let leftBase = subtitleText.isEmpty ? "\(titleText)" : "\(titleText) · \(subtitleText)"
+        let leftTextRaw = warning ? "⚠ \(leftBase)" : leftBase
+        let rightText = chip == nil ? pct : "\(pct)  \(chip!)"
+        let text = "  \(leftTextRaw)\t\(rightText)"
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .semibold)
+        let tabRight = (rowWidth - barInsetX) - textLeftX
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: tabRight, options: [:])]
+        paragraph.defaultTabInterval = tabRight
+        let attr = NSMutableAttributedString(
+            string: text,
+            attributes: [
+                .foregroundColor: dimText,
+                .font: font,
+                .paragraphStyle: paragraph,
+            ]
+        )
+        if let titleRange = text.range(of: titleText) {
+            attr.addAttribute(.foregroundColor, value: headerText.withAlphaComponent(0.92), range: NSRange(titleRange, in: text))
+            if titleText == "5H" {
+                let ns = NSRange(titleRange, in: text)
+                attr.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .bold), range: ns)
+                attr.addAttribute(.foregroundColor, value: headerText.withAlphaComponent(0.99), range: ns)
+            }
+        }
+        if warning, let warningRange = text.range(of: "⚠") {
+            let ns = NSRange(warningRange, in: text)
+            attr.addAttribute(.foregroundColor, value: usageCriticalRed, range: ns)
+            attr.addAttribute(.font, value: NSFont.systemFont(ofSize: 10, weight: .semibold), range: ns)
+        }
+        if !subtitleText.isEmpty, let subtitleRange = text.range(of: subtitleText) {
+            attr.addAttribute(.foregroundColor, value: dimText.withAlphaComponent(0.65), range: NSRange(subtitleRange, in: text))
         }
         if let range = text.range(of: pct, options: .backwards) {
             let nsRange = NSRange(range, in: text)
             attr.addAttribute(.foregroundColor, value: pctColor, range: nsRange)
+            attr.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .bold), range: nsRange)
+        }
+        if let chip, let chipRange = text.range(of: chip, options: .backwards) {
+            let nsChipRange = NSRange(chipRange, in: text)
+            attr.addAttribute(.foregroundColor, value: chipTextColor(chip), range: nsChipRange)
+            attr.addAttribute(.backgroundColor, value: chipBackgroundColor(chip), range: nsChipRange)
+            attr.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .bold), range: nsChipRange)
+        }
+        lbl.attributedStringValue = attr
+        lbl.toolTip = chipTooltip
+    }
+
+    func setSectionTitleLabel(_ lbl: NSTextField, name: String, plan: String, nameColor: NSColor, summaryDotColor: NSColor? = nil) {
+        let cleanPlan = plan.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let text = "  ● \(name)  ƒ \(cleanPlan)"
+        let attr = NSMutableAttributedString(
+            string: text,
+            attributes: [
+                .foregroundColor: nameColor,
+                .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
+            ]
+        )
+        if let dotRange = text.range(of: "●"), let summaryDotColor {
+            attr.addAttribute(.foregroundColor, value: summaryDotColor, range: NSRange(dotRange, in: text))
+        }
+        if let symbolRange = text.range(of: "ƒ") {
+            attr.addAttribute(.foregroundColor, value: dimText.withAlphaComponent(0.80), range: NSRange(symbolRange, in: text))
+            attr.addAttribute(.font, value: NSFont.systemFont(ofSize: 13, weight: .regular), range: NSRange(symbolRange, in: text))
+        }
+        if let planRange = text.range(of: cleanPlan, options: .backwards) {
+            let ns = NSRange(planRange, in: text)
+            attr.addAttribute(.font, value: NSFont.systemFont(ofSize: 14, weight: .semibold), range: ns)
+            attr.addAttribute(.foregroundColor, value: dimText.withAlphaComponent(0.90), range: ns)
         }
         lbl.attributedStringValue = attr
     }
 
-    func setBarRowLabel(_ lbl: NSTextField, prefix: String, pct: String, suffix: String = "", barColor: NSColor, barWidth: Int = 18) {
-        let bar = progressBar(pct, width: barWidth)
-        let suffixPart = suffix.isEmpty ? "" : "  \(suffix)"
-        let text = "  \(prefix)  \(bar)\(suffixPart)"
-        let font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        let attr = NSMutableAttributedString(string: text, attributes: [.foregroundColor: dimText, .font: font])
-        if let range = text.range(of: bar) {
-            let nsRange = NSRange(range, in: text)
-            attr.addAttribute(.foregroundColor, value: barColor, range: nsRange)
+    func setTwoColLabel(
+        _ lbl: NSTextField,
+        left: String,
+        right: String,
+        color: NSColor,
+        size: CGFloat = 11,
+        bold: Bool = false,
+        mono: Bool = true
+    ) {
+        let font: NSFont
+        if mono {
+            font = NSFont.monospacedDigitSystemFont(ofSize: size, weight: bold ? .semibold : .regular)
+        } else {
+            font = bold ? NSFont.boldSystemFont(ofSize: size) : NSFont.systemFont(ofSize: size)
         }
-        lbl.attributedStringValue = attr
+        let cleanLeft = left.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanRight = right.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = "  \(cleanLeft)\t\(cleanRight)"
+        let tabRight = (rowWidth - barInsetX) - textLeftX
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: tabRight, options: [:])]
+        paragraph.defaultTabInterval = tabRight
+        lbl.attributedStringValue = NSAttributedString(
+            string: text,
+            attributes: [
+                .foregroundColor: color,
+                .font: font,
+                .paragraphStyle: paragraph,
+            ]
+        )
+    }
+
+    func chipBackgroundColor(_ chip: String) -> NSColor {
+        switch chip {
+        case "AT RISK", "CAPPED":
+            return NSColor(calibratedRed: 0.38, green: 0.18, blue: 0.20, alpha: 0.88)
+        case "WATCH":
+            return NSColor(calibratedRed: 0.43, green: 0.33, blue: 0.10, alpha: 0.90)
+        default:
+            return NSColor(calibratedRed: 0.15, green: 0.35, blue: 0.24, alpha: 0.88)
+        }
+    }
+
+    func chipTextColor(_ chip: String) -> NSColor {
+        switch chip {
+        case "AT RISK", "CAPPED":
+            return NSColor(calibratedRed: 1.00, green: 0.76, blue: 0.76, alpha: 1.0)
+        case "WATCH":
+            return NSColor(calibratedRed: 1.00, green: 0.88, blue: 0.53, alpha: 1.0)
+        default:
+            return NSColor(calibratedRed: 0.66, green: 0.95, blue: 0.70, alpha: 1.0)
+        }
     }
 
     func pctInt(_ pct: String) -> Int? {
@@ -519,37 +1478,162 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func barColor(_ pct: String) -> NSColor {
-        guard let n = pctInt(pct) else { return .secondaryLabelColor }
-        if n > 70 { return usageRed }
-        if n >= 50 { return usageAmber }
-        return usageGreen
+        switch meterState(for: pct, isRemaining: false) {
+        case .healthy:
+            return usageGreen
+        case .watch:
+            return usageHealthyGold
+        case .critical:
+            return usageCriticalRed
+        case .capped:
+            return usageCriticalRed
+        case .unknown:
+            return .secondaryLabelColor
+        }
     }
 
     func barColorForValue(_ pct: String, isRemaining: Bool) -> NSColor {
-        guard let n = pctInt(pct) else { return .secondaryLabelColor }
-        if isRemaining {
-            if n < 30 { return usageRed }
-            if n <= 50 { return usageAmber }
+        switch meterState(for: pct, isRemaining: isRemaining) {
+        case .healthy:
             return usageGreen
+        case .watch:
+            return usageHealthyGold
+        case .critical:
+            return usageCriticalRed
+        case .capped:
+            return usageCriticalRed
+        case .unknown:
+            return .secondaryLabelColor
         }
-        return barColor(pct)
+    }
+
+    enum MeterState {
+        case healthy
+        case watch
+        case critical
+        case capped
+        case unknown
+    }
+
+    func meterState(for pct: String, isRemaining: Bool) -> MeterState {
+        _ = isRemaining
+        guard let n = pctInt(pct) else { return .unknown }
+        if n >= 100 { return .capped }
+        if n >= 80 { return .critical }
+        if n >= 50 { return .watch }
+        return .healthy
+    }
+
+    func isCriticalState(_ pct: String, isRemaining: Bool) -> Bool {
+        meterState(for: pct, isRemaining: isRemaining) == .critical
+    }
+
+    func isCappedState(_ pct: String, isRemaining: Bool) -> Bool {
+        meterState(for: pct, isRemaining: isRemaining) == .capped
     }
 
     func colorDot(_ pct: String) -> String {
-        guard let n = pctInt(pct) else { return "⚪" }
-        if n > 70 { return "🔴" }
-        if n >= 50 { return "🟡" }
-        return "🟢"
+        switch meterState(for: pct, isRemaining: false) {
+        case .capped:
+            return "🔴"
+        case .watch:
+            return "🟡"
+        case .critical:
+            return "🔴"
+        case .healthy:
+            return "🟢"
+        case .unknown:
+            return "⚪"
+        }
+    }
+
+    func updateProgressBar(_ view: ProgressBarMenuRowView, pct: String, color: NSColor, projectedPct: Int?) {
+        let used = Double(pctInt(pct) ?? 0) / 100.0
+        view.fillFraction = min(max(used, 0.0), 1.0)
+        view.fillColor = color
+        if let projectedPct {
+            view.tickFraction = min(max(Double(projectedPct) / 100.0, 0.0), 1.0)
+        } else {
+            view.tickFraction = nil
+        }
+    }
+
+    func setShadowProgress(_ view: ProgressBarMenuRowView, pct: String, color: NSColor) {
+        let shadow = Double(pctInt(pct) ?? 0) / 100.0
+        view.secondaryFraction = min(max(shadow, 0.0), 1.0)
+        view.secondaryColor = color.withAlphaComponent(0.50)
     }
 
     func colorDotForValue(_ pct: String, isRemaining: Bool) -> String {
-        guard let n = pctInt(pct) else { return "⚪" }
-        if isRemaining {
-            if n < 30 { return "🔴" }
-            if n <= 50 { return "🟡" }
+        switch meterState(for: pct, isRemaining: isRemaining) {
+        case .capped:
+            return "🔴"
+        case .watch:
+            return "🟡"
+        case .critical:
+            return "🔴"
+        case .healthy:
             return "🟢"
+        case .unknown:
+            return "⚪"
         }
-        return colorDot(pct)
+    }
+
+    func stateLabel(_ pct: String, isRemaining: Bool, isCapped: Bool = false) -> String {
+        if isCapped { return "CAPPED" }
+        switch meterState(for: pct, isRemaining: isRemaining) {
+        case .healthy:
+            return "ON TRACK"
+        case .watch:
+            return "WATCH"
+        case .critical:
+            return "AT RISK"
+        case .capped:
+            return "CAPPED"
+        case .unknown:
+            return "IDLE"
+        }
+    }
+
+    func stateTooltip(_ label: String) -> String {
+        switch label {
+        case "IDLE":
+            return "No usage in this window yet."
+        case "ON TRACK":
+            return "Usage is within comfortable range."
+        case "WATCH":
+            return "Usage is elevated. Monitor this window."
+        case "AT RISK":
+            return "High usage. You may hit the limit soon."
+        case "CAPPED":
+            return "Window limit reached. Access resumes at reset."
+        default:
+            return "Current usage state."
+        }
+    }
+
+    func stateSeverity(_ label: String) -> Int {
+        switch label {
+        case "CAPPED", "AT RISK":
+            return 3
+        case "WATCH":
+            return 2
+        case "ON TRACK":
+            return 1
+        default:
+            return 0
+        }
+    }
+
+    func stateColor(_ label: String) -> NSColor {
+        switch label {
+        case "CAPPED", "AT RISK":
+            return usageRed
+        case "WATCH":
+            return usageAmber
+        default:
+            return usageGreen
+        }
     }
 
     func stringValue(_ any: Any?, fallback: String = "—") -> String {
@@ -582,13 +1666,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func shortClock(_ value: String) -> String {
         if value == "Never" || value == "—" { return "--:--:--" }
 
-        let pattern = #"\b\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?\b"#
-        if let regex = try? NSRegularExpression(pattern: pattern) {
-            let range = NSRange(value.startIndex..<value.endIndex, in: value)
-            if let match = regex.firstMatch(in: value, options: [], range: range),
-               let swiftRange = Range(match.range, in: value) {
-                return String(value[swiftRange]).replacingOccurrences(of: " ", with: "")
-            }
+        let range = NSRange(value.startIndex..<value.endIndex, in: value)
+        if let match = shortClockRegex.firstMatch(in: value, options: [], range: range),
+           let swiftRange = Range(match.range, in: value) {
+            return String(value[swiftRange]).replacingOccurrences(of: " ", with: "")
         }
 
         let parts = value.split(separator: " ")
@@ -600,9 +1681,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func compactClock(_ value: String) -> String {
         let c = shortClock(value)
-        if c == "--:--:--" { return "--:--" }
+        if c == "--:--:--" {
+            return currentClockCompact()
+        }
 
-        // Prefer compact HH:MM to avoid header clipping
         if let first = c.split(separator: " ").first {
             let token = String(first)
             let comps = token.split(separator: ":")
@@ -610,7 +1692,75 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 return "\(comps[0]):\(comps[1])"
             }
         }
-        return c
+        return currentClockCompact()
+    }
+
+    func currentClockCompact() -> String {
+        let raw = uiClockFormatter.string(from: Date())
+        let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
+        if let m = shortHmRegex.firstMatch(in: raw, options: [], range: range),
+           let r = Range(m.range, in: raw) {
+            return String(raw[r])
+        }
+        return "--:--"
+    }
+
+    func headerClockDisplay(_ compact: String) -> String {
+        let t = compact.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty || t == "--:--" {
+            return uiClockFormatter.string(from: Date())
+        }
+        let parser24 = DateFormatter()
+        parser24.locale = .autoupdatingCurrent
+        parser24.dateFormat = "H:mm"
+        if let d = parser24.date(from: t) {
+            return uiClockFormatter.string(from: d)
+        }
+        return t
+    }
+
+    func countdownSeconds(_ value: String) -> Int? {
+        if value == "—" || value.isEmpty { return nil }
+        let d = extractUnit(value, unit: "d")
+        let h = extractUnit(value, unit: "h")
+        let m = extractUnit(value, unit: "m")
+        if d == nil && h == nil && m == nil { return nil }
+        return (d ?? 0) * 86400 + (h ?? 0) * 3600 + (m ?? 0) * 60
+    }
+
+    func extractUnit(_ text: String, unit: String) -> Int? {
+        guard let unitChar = unit.first, let idx = text.firstIndex(of: unitChar) else { return nil }
+        var i = idx
+        var digits: [Character] = []
+        while i > text.startIndex {
+            let prev = text.index(before: i)
+            let ch = text[prev]
+            guard ch.isNumber else { break }
+            digits.append(ch)
+            i = prev
+        }
+        guard !digits.isEmpty else { return nil }
+        return Int(String(digits.reversed()))
+    }
+
+    func unlockClock(from sessionReset: String) -> String? {
+        let countdown = shortCountdown(sessionReset)
+        guard let secs = countdownSeconds(countdown), secs > 0 else { return nil }
+        let unlockDate = Date().addingTimeInterval(TimeInterval(secs))
+        return formattedClock(unlockDate)
+    }
+
+    func setCappedStrip(_ lbl: NSTextField, sessionReset: String) {
+        let countdown = shortCountdown(sessionReset)
+        let right = (countdown == "—") ? "↻ soon" : "↻ \(countdown)"
+        let left = "↻ " + (unlockClock(from: sessionReset) ?? "soon")
+        setTwoColLabel(lbl, left: left, right: right, color: headerText, size: 12, bold: true, mono: true)
+    }
+
+    func setWeeklyCappedLine(_ lbl: NSTextField, weeklyReset: String) {
+        let left = weeklyCountdownPhrase(weeklyReset)
+        let right = weeklyResumePhrase(weeklyReset)
+        setTwoColLabel(lbl, left: left, right: right, color: headerText, size: 11, bold: true, mono: true)
     }
 
     func shortCountdown(_ reset: String) -> String {
@@ -628,45 +1778,167 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return "—"
     }
 
-    func shortResetPhrase(_ reset: String) -> String {
+    func sessionCountdownPhrase(_ reset: String, pct: String? = nil) -> String {
+        if let pct, (pctInt(pct) ?? -1) == 0 {
+            let c = shortCountdown(reset)
+            if c == "—" {
+                return "↻ starts on first call"
+            }
+        }
         let c = shortCountdown(reset)
-        if c == "—" {
-            return "Resets-—"
-        }
-        if c == "soon" {
-            return "Resets-soon"
-        }
-        return "Resets in \(c)"
+        if c == "—" { return "↻ —" }
+        if c == "soon" { return "↻ soon" }
+        return "↻ \(c)"
     }
 
-    func weeklyResetPhrase(_ reset: String) -> String {
-        let tz = TimeZone.autoupdatingCurrent.abbreviation() ?? TimeZone.autoupdatingCurrent.identifier
+    func sessionClockPhrase(_ reset: String, pct: String? = nil) -> String {
+        if let pct, (pctInt(pct) ?? -1) == 0 {
+            let c = shortCountdown(reset)
+            if c == "—" {
+                return ""
+            }
+        }
+        guard let clock = unlockClock(from: reset) else { return "" }
+        return "at \(clock)"
+    }
 
+    func weeklyCountdownPhrase(_ reset: String) -> String {
+        if let hrs = hoursUntilReset(reset) {
+            let totalMinutes = max(0, Int((hrs * 60.0).rounded()))
+            let days = totalMinutes / (24 * 60)
+            let remMinsAfterDays = totalMinutes % (24 * 60)
+            let hours = remMinsAfterDays / 60
+            let mins = remMinsAfterDays % 60
+            if days > 0 {
+                if mins > 0 {
+                    return "↻ \(days)d \(hours)h \(mins)m"
+                }
+                return "↻ \(days)d \(hours)h"
+            }
+            if hours > 0 {
+                if mins > 0 {
+                    return "↻ \(hours)h \(mins)m"
+                }
+                return "↻ \(hours)h"
+            }
+            return "↻ \(mins)m"
+        }
+        let c = shortCountdown(reset)
+        if c == "—" { return "↻ —" }
+        if c == "soon" { return "↻ soon" }
+        return "↻ \(c)"
+    }
+
+    func weeklyClockPhrase(_ reset: String) -> String {
         if reset.hasPrefix("Resets ") {
             let raw = reset.replacingOccurrences(of: "Resets ", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             let parts = raw.split(separator: " ")
+            if parts.count >= 3 {
+                let day = String(parts[0])
+                let time = normalizedClockToken(String(parts[1]), ampm: String(parts[2]))
+                return "\(day) \(time)"
+            }
+            return raw
+        }
+        return ""
+    }
 
+    func weeklyResumePhrase(_ reset: String) -> String {
+        if reset.hasPrefix("Resets ") {
+            let raw = reset.replacingOccurrences(of: "Resets ", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let parts = raw.split(separator: " ")
+            if parts.count >= 3 {
+                let shortDay = String(parts[0])
+                let time = normalizedClockToken(String(parts[1]), ampm: String(parts[2]))
+                return "↻ \(shortDay), \(time)"
+            }
+            return "↻ \(raw)"
+        }
+        return "↻ soon"
+    }
+
+    func normalizedClockToken(_ token: String, ampm: String) -> String {
+        let composed = "\(token) \(ampm)"
+        guard let date = parser12HourFormatter.date(from: composed) else {
+            return "\(token) \(ampm)"
+        }
+        return formattedClock(date)
+    }
+
+    func formattedClock(_ date: Date) -> String {
+        return uiClockFormatter.string(from: date)
+    }
+
+    func setHeaderLabel(dot: String, isLive: Bool, title: String, refreshText: String) {
+        let text = "  \(dot) \(title)\t\(refreshText)"
+        let tabRight = (rowWidth - barInsetX) - textLeftX
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.tabStops = [NSTextTab(textAlignment: .right, location: tabRight, options: [:])]
+        paragraph.defaultTabInterval = tabRight
+        let attr = NSMutableAttributedString(
+            string: text,
+            attributes: [
+                .foregroundColor: headerText,
+                .font: NSFont.systemFont(ofSize: 12.5, weight: .semibold),
+                .paragraphStyle: paragraph,
+            ]
+        )
+        if let dotRange = attr.string.range(of: dot) {
+            let ns = NSRange(dotRange, in: attr.string)
+            let c = isLive
+                ? NSColor(calibratedRed: 0.58, green: 0.90, blue: 0.62, alpha: 1.0)
+                : NSColor(calibratedWhite: 1.0, alpha: 0.80)
+            attr.addAttribute(.foregroundColor, value: c, range: ns)
+            let glow = NSShadow()
+            glow.shadowColor = c.withAlphaComponent(isLive ? 0.78 : 0.30)
+            glow.shadowBlurRadius = isLive ? 10.0 : 3.0
+            glow.shadowOffset = .zero
+            attr.addAttribute(.shadow, value: glow, range: ns)
+        }
+        if let rightRange = attr.string.range(of: refreshText, options: .backwards) {
+            let ns = NSRange(rightRange, in: attr.string)
+            attr.addAttribute(.foregroundColor, value: dimText.withAlphaComponent(0.92), range: ns)
+            attr.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium), range: ns)
+        }
+        lbHeader.attributedStringValue = attr
+    }
+
+    func hoursUntilReset(_ reset: String) -> Double? {
+        if reset.hasPrefix("Resets in ") {
+            let c = shortCountdown(reset)
+            if c == "soon" { return 0.0 }
+            guard let secs = countdownSeconds(c) else { return nil }
+            return Double(secs) / 3600.0
+        }
+        if reset.hasPrefix("Resets ") {
+            let raw = reset.replacingOccurrences(of: "Resets ", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let parts = raw.split(separator: " ")
             if parts.count >= 3 {
                 let dayToken = String(parts[0])
-                let timeToken = String(parts[1]).replacingOccurrences(of: ":", with: ".")
-                let ampm = String(parts[2])
-                let dayMap: [String: String] = [
-                    "Mon": "Monday", "Tue": "Tuesday", "Wed": "Wednesday", "Thu": "Thursday",
-                    "Fri": "Friday", "Sat": "Saturday", "Sun": "Sunday",
+                let timeToken = String(parts[1])
+                let ampm = String(parts[2]).uppercased()
+                let dayMap: [String: Int] = [
+                    "Sun": 1, "Mon": 2, "Tue": 3, "Wed": 4, "Thu": 5, "Fri": 6, "Sat": 7,
                 ]
-                let fullDay = dayMap[dayToken] ?? dayToken
-                return "Resets-\(fullDay) \(timeToken) \(ampm) \(tz)"
+                guard let targetWeekday = dayMap[dayToken] else { return nil }
+                let hm = timeToken.split(separator: ":")
+                guard hm.count == 2, let hRaw = Int(hm[0]), let mRaw = Int(hm[1]) else { return nil }
+                var hour = hRaw % 12
+                if ampm == "PM" { hour += 12 }
+                let minute = mRaw
+                let cal = Calendar.autoupdatingCurrent
+                let now = Date()
+                for delta in 0 ... 7 {
+                    guard let d = cal.date(byAdding: .day, value: delta, to: now),
+                          let candidate = cal.date(bySettingHour: hour, minute: minute, second: 0, of: d)
+                    else { continue }
+                    if cal.component(.weekday, from: candidate) == targetWeekday && candidate > now {
+                        return candidate.timeIntervalSince(now) / 3600.0
+                    }
+                }
             }
-
-            return "Resets-\(raw) \(tz)"
         }
-
-        if reset.contains("Resets in") {
-            let c = shortCountdown(reset)
-            return c == "—" ? "Resets-—" : "Resets-\(c) \(tz)"
-        }
-
-        return "Resets-—"
+        return nil
     }
 
     func normalizedPlanLabel(_ raw: String, fallback: String) -> String {
@@ -674,23 +1946,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return t.isEmpty || t == "—" ? fallback : t
     }
 
+    func meterStateShortLabel(_ pct: String, isRemaining: Bool) -> String {
+        switch meterState(for: pct, isRemaining: isRemaining) {
+        case .healthy:
+            return "Healthy"
+        case .watch:
+            return "Gold"
+        case .critical:
+            return "Critical"
+        case .capped:
+            return "Capped"
+        case .unknown:
+            return "Unknown"
+        }
+    }
+
     func twoCol(_ left: String, _ right: String, total: Int = 58) -> String {
         let l = left
         let r = right
         let spaceCount = max(2, total - l.count - r.count)
         return "  " + l + String(repeating: " ", count: spaceCount) + r
-    }
-
-    func healthLabel(_ pct: String, isRemaining: Bool) -> String {
-        guard let n = pctInt(pct) else { return "unknown" }
-        if isRemaining {
-            if n < 30 { return "at risk" }
-            if n <= 50 { return "watch" }
-            return "on track"
-        }
-        if n > 80 { return "at risk" }
-        if n >= 50 { return "watch" }
-        return "on track"
     }
 
     func updateUI(_ payload: [String: Any]) {
@@ -719,66 +1994,159 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let oSView = showRemaining ? oSession.remaining : oSession.used
         let oWView = showRemaining ? oWeekly.remaining : oWeekly.used
 
-        let modeLabel = showRemaining ? "remaining" : "used"
+        let claudeWeeklyCapped = isCappedState(cWView, isRemaining: showRemaining)
+        let codexWeeklyCapped = isCappedState(oWView, isRemaining: showRemaining)
+        claudeWeeklyIsCapped = claudeWeeklyCapped
+        codexWeeklyIsCapped = codexWeeklyCapped
+        let cSEffectiveView = claudeWeeklyCapped ? (showRemaining ? "0%" : "100%") : cSView
+        let oSEffectiveView = codexWeeklyCapped ? (showRemaining ? "0%" : "100%") : oSView
 
         let cWDot = cWView != "—" ? colorDotForValue(cWView, isRemaining: showRemaining) : "⚪"
-        let cSDot = cSView != "—" ? colorDotForValue(cSView, isRemaining: showRemaining) : "⚪"
         let oWDot = oWView != "—" ? colorDotForValue(oWView, isRemaining: showRemaining) : "⚪"
-        let oSDot = oSView != "—" ? colorDotForValue(oSView, isRemaining: showRemaining) : "⚪"
-
-        statusItem.button?.title = "C \(cWDot)\(cSDot)  O \(oWDot)\(oSDot)"
+        let oSDot = oSEffectiveView != "—" ? colorDotForValue(oSEffectiveView, isRemaining: showRemaining) : "⚪"
 
         pulseOn.toggle()
         let isLive = (cStatus == "Live") || (oStatus == "Live")
-        let dot = pulseOn ? "●" : "◉"
+        statusItem.button?.title = "CL\(cWDot) CO\(oSDot)\(oWDot)"
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.updateStatusDotTooltips(
+                claudeWeeklyValue: cWView,
+                codexSessionValue: oSEffectiveView,
+                codexWeeklyValue: oWView,
+                cWDot: cWDot,
+                oSDot: oSDot,
+                oWDot: oWDot
+            )
+        }
+        let dot = "●"
         let headColor: NSColor = headerText
-        let refreshText = "↻" + compactClock(updated)
-        _ = isLive
-        setLabel(lbHeader, twoCol("\(dot) Claude/Codex_Live Tracker", refreshText, total: columns), color: headColor, size: 13, bold: true, mono: true)
-        setLabel(lbClaudeTitle, "  Claude  \(normalizedPlanLabel(cPlanRaw, fallback: "PRO"))", color: headerText, size: 14, bold: true)
-        setLabel(lbCodexTitle, "  Codex  \(normalizedPlanLabel(oPlanRaw, fallback: "PLUS"))", color: headerText, size: 14, bold: true)
+        let refreshedClock = compactClock(updated).trimmingCharacters(in: .whitespacesAndNewlines)
+        let refreshText = headerClockDisplay(refreshedClock)
+        _ = headColor
+        setHeaderLabel(dot: dot, isLive: isLive && pulseOn, title: "Claude & Codex_Live Tracker", refreshText: refreshText)
+        let claudeCapped = isCappedState(cSEffectiveView, isRemaining: showRemaining)
+        let codexCapped = isCappedState(oSEffectiveView, isRemaining: showRemaining)
+        claudeIsCapped = claudeCapped
+        codexIsCapped = codexCapped
 
-        setMeterTopLabel(lbClaudeSessionTop, title: "Session", pct: cSView, pctColor: barColorForValue(cSView, isRemaining: showRemaining))
-        setBarRowLabel(lbClaudeSessionBottom, prefix: "5h window", pct: cSView, barColor: barColorForValue(cSView, isRemaining: showRemaining), barWidth: 18)
-        setMeterTopLabel(lbClaudeWeeklyTop, title: "Weekly", pct: cWView, pctColor: barColorForValue(cWView, isRemaining: showRemaining))
-        let cWeeklyPrefix = weeklyResetPhrase(cWReset)
-        let cWeeklyWidth = cWeeklyPrefix.count > 16 ? 12 : 14
-        setBarRowLabel(lbClaudeWeeklyBottom, prefix: cWeeklyPrefix, pct: cWView, suffix: healthLabel(cWView, isRemaining: showRemaining), barColor: barColorForValue(cWView, isRemaining: showRemaining), barWidth: cWeeklyWidth)
+        setSectionTitleLabel(lbClaudeTitle, name: "Claude", plan: normalizedPlanLabel(cPlanRaw, fallback: "PRO"), nameColor: headerText, summaryDotColor: claudeHeaderTint)
+        setSectionTitleLabel(lbCodexTitle, name: "Codex", plan: normalizedPlanLabel(oPlanRaw, fallback: "PLUS"), nameColor: headerText, summaryDotColor: codexHeaderTint)
 
-        let claudeCapped = (!showRemaining && (cSView == "100%"))
-        claudeCappedItem.isHidden = !claudeCapped
-        claudeSessionResetItem.isHidden = claudeCapped
+        setMeterTopLabel(
+            lbClaudeSessionTop,
+            title: "5H",
+            subtitle: "",
+            pct: cSEffectiveView,
+            pctColor: barColorForValue(cSEffectiveView, isRemaining: showRemaining),
+            warning: isCriticalState(cSEffectiveView, isRemaining: showRemaining),
+            chip: nil,
+            chipTooltip: nil
+        )
+        updateProgressBar(claudeSessionBarView, pct: cSEffectiveView, color: barColorForValue(cSEffectiveView, isRemaining: showRemaining), projectedPct: nil)
+        claudeSessionBarView.glowFactor = claudeCapped ? 0.20 : 1.0
+        setShadowProgress(claudeSessionBarView, pct: "0%", color: dimText)
+        setMeterTopLabel(
+            lbClaudeWeeklyTop,
+            title: "Weekly",
+            subtitle: "",
+            pct: cWView,
+            pctColor: barColorForValue(cWView, isRemaining: showRemaining),
+            warning: isCriticalState(cWView, isRemaining: showRemaining),
+            chip: nil,
+            chipTooltip: nil
+        )
+        updateProgressBar(claudeWeeklyBarView, pct: cWView, color: barColorForValue(cWView, isRemaining: showRemaining), projectedPct: nil)
+        claudeWeeklyBarView.glowFactor = claudeWeeklyCapped ? 0.20 : 1.0
+        if claudeWeeklyCapped {
+            setWeeklyCappedLine(lbClaudeWeeklyResetLine, weeklyReset: cWReset)
+        } else {
+            setTwoColLabel(lbClaudeWeeklyResetLine, left: weeklyCountdownPhrase(cWReset), right: weeklyClockPhrase(cWReset), color: dimText, size: 11, bold: true, mono: true)
+        }
+
+        claudeCappedItem.isHidden = !claudeCapped || claudeWeeklyCapped
+        claudeSessionResetItem.isHidden = claudeCapped || claudeWeeklyCapped
         if claudeCapped {
-            setLabel(lbClaudeCapped, "  Session capped. Unlock in \(shortCountdown(cSReset))", color: headerText, size: 12, bold: true, mono: true)
+            if claudeWeeklyCapped {
+                setWeeklyCappedLine(lbClaudeCapped, weeklyReset: cWReset)
+            } else {
+                setCappedStrip(lbClaudeCapped, sessionReset: cSReset)
+            }
         } else {
-            setLabel(lbClaudeSessionResetLine, "  \(shortResetPhrase(cSReset))", color: dimText, size: 11, mono: true)
+            setTwoColLabel(
+                lbClaudeSessionResetLine,
+                left: sessionCountdownPhrase(cSReset, pct: cSEffectiveView),
+                right: sessionClockPhrase(cSReset, pct: cSEffectiveView),
+                color: dimText,
+                size: 11,
+                bold: true,
+                mono: true
+            )
         }
 
-        setMeterTopLabel(lbCodexSessionTop, title: "Session", pct: oSView, pctColor: barColorForValue(oSView, isRemaining: showRemaining))
-        setBarRowLabel(lbCodexSessionBottom, prefix: "5h window", pct: oSView, barColor: barColorForValue(oSView, isRemaining: showRemaining), barWidth: 18)
-        let codexCapped = (!showRemaining && (oSView == "100%"))
-        codexSessionResetItem.isHidden = codexCapped
-        codexCappedItem.isHidden = !codexCapped
+        setMeterTopLabel(
+            lbCodexSessionTop,
+            title: "5H",
+            subtitle: "",
+            pct: oSEffectiveView,
+            pctColor: barColorForValue(oSEffectiveView, isRemaining: showRemaining),
+            warning: isCriticalState(oSEffectiveView, isRemaining: showRemaining),
+            chip: nil,
+            chipTooltip: nil
+        )
+        updateProgressBar(codexSessionBarView, pct: oSEffectiveView, color: barColorForValue(oSEffectiveView, isRemaining: showRemaining), projectedPct: nil)
+        codexSessionBarView.glowFactor = codexCapped ? 0.20 : 1.0
+        setShadowProgress(codexSessionBarView, pct: "0%", color: dimText)
+        codexSessionResetItem.isHidden = codexCapped || codexWeeklyCapped
+        codexCappedItem.isHidden = !codexCapped || codexWeeklyCapped
         if codexCapped {
-            setLabel(lbCodexCapped, "  Session capped. Unlock in \(shortCountdown(oSReset))", color: headerText, size: 12, bold: true, mono: true)
+            if codexWeeklyCapped {
+                setWeeklyCappedLine(lbCodexCapped, weeklyReset: oWReset)
+            } else {
+                setCappedStrip(lbCodexCapped, sessionReset: oSReset)
+            }
         } else {
-            setLabel(lbCodexSessionResetLine, "  \(shortResetPhrase(oSReset))", color: dimText, size: 11, mono: true)
+            setTwoColLabel(
+                lbCodexSessionResetLine,
+                left: sessionCountdownPhrase(oSReset, pct: oSEffectiveView),
+                right: sessionClockPhrase(oSReset, pct: oSEffectiveView),
+                color: dimText,
+                size: 11,
+                bold: true,
+                mono: true
+            )
         }
-        setMeterTopLabel(lbCodexWeeklyTop, title: "Weekly", pct: oWView, pctColor: barColorForValue(oWView, isRemaining: showRemaining))
-        let oWeeklyPrefix = weeklyResetPhrase(oWReset)
-        let oWeeklyWidth = oWeeklyPrefix.count > 16 ? 12 : 14
-        setBarRowLabel(lbCodexWeeklyBottom, prefix: oWeeklyPrefix, pct: oWView, suffix: healthLabel(oWView, isRemaining: showRemaining), barColor: barColorForValue(oWView, isRemaining: showRemaining), barWidth: oWeeklyWidth)
+        setMeterTopLabel(
+            lbCodexWeeklyTop,
+            title: "Weekly",
+            subtitle: "",
+            pct: oWView,
+            pctColor: barColorForValue(oWView, isRemaining: showRemaining),
+            warning: isCriticalState(oWView, isRemaining: showRemaining),
+            chip: nil,
+            chipTooltip: nil
+        )
+        updateProgressBar(codexWeeklyBarView, pct: oWView, color: barColorForValue(oWView, isRemaining: showRemaining), projectedPct: nil)
+        codexWeeklyBarView.glowFactor = codexWeeklyCapped ? 0.20 : 1.0
+        if codexWeeklyCapped {
+            setWeeklyCappedLine(lbCodexWeeklyResetLine, weeklyReset: oWReset)
+        } else {
+            setTwoColLabel(lbCodexWeeklyResetLine, left: weeklyCountdownPhrase(oWReset), right: weeklyClockPhrase(oWReset), color: dimText, size: 11, bold: true, mono: true)
+        }
 
-        let toggleTitle = showRemaining ? "Show Used %" : "Show Remaining %"
+        let toggleTitle = showRemaining ? "✓ Show Remaining %" : "Show Remaining %"
         toggleUsageModeItem.title = toggleTitle
-        setLabel(lbToggleActionTitle, "  \(toggleTitle)", color: headerText, size: 13, bold: false, mono: false)
-
-        _ = modeLabel
+        setActionRowLabel(lbToggleActionTitle, title: toggleTitle, shortcut: toggleShortcutText)
+        applyHoverDisclosure()
     }
 
     @objc func toggleUsageMode() {
         showRemaining.toggle()
-        loadData()
+        if let payload = lastPayload {
+            updateUI(payload)
+        } else {
+            loadData()
+        }
     }
 
     @objc func openClaudeAnalytics() {
