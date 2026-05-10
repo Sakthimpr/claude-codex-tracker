@@ -149,5 +149,4 @@ launchctl unload "${PLIST}" 2>/dev/null || true
 launchctl load   "${PLIST}" 2>/dev/null || true
 
 echo ""
-echo "✅  Done. Launching..."
-"${INSTALL_BIN}" &
+echo "✅  Done. LaunchAgent loaded and tracker started."

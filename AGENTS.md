@@ -1,43 +1,100 @@
-# Codex Tracker — macOS Menu Bar App
+# Claude + Codex Tracker — Project AGENTS Guide
 
-## Build Rule (Non-Negotiable)
-After **every code change**, run the full build before marking done:
+## Project Root
+- `/Users/sakthivelramasamy/Documents/Codex/claude_codex_tracker`
+
+## Primary Build Rule
+After any code change, run:
 ```bash
-cd /Users/sakthivelramasamy/Documents/Codex/claude_tracker-app
-bash build.sh
+cd /Users/sakthivelramasamy/Documents/Codex/claude_codex_tracker
+./build.sh
 ```
-This compiles Swift, installs the binary to `~/.local/bin/`, copies tracker_data.py to `~/.Codex-tracker/`, and launches.
 
-## Verification Rule
-**Never use Playwright** to verify UI changes. Sakthivel verifies the app himself by looking at the running macOS menu bar. Do not invoke any screenshot or browser tool.
+## What `build.sh` does
+1. Verifies Python and required packages (`playwright`, `browser_cookie3`, `requests`)
+2. Compiles Swift menu binary from `native/Launcher.swift`
+3. Builds app icon from `assets/ClaudeCodexIcon1024.png`
+4. Installs binary to `~/.local/bin/claude-tracker`
+5. Installs fetcher to `~/.claude-tracker/tracker_data.py`
+6. Recreates launcher app at `/Applications/Claude_Codex_Tracker.app`
+7. Rewrites/loads LaunchAgent at `~/Library/LaunchAgents/com.sakthivel.claudetracker.plist`
+8. Launches the tracker
 
-## Stack
-- Data layer: Python (`tracker_data.py`) — fetches Codex usage API via Playwright + Chrome cookies, writes JSON to `/tmp/claude_tracker_data.json`
-- Native binary: Swift (`native/Launcher.swift`) — plain binary (NOT a .app bundle), menu bar only
-- Install locations: `~/.local/bin/Codex-tracker` (binary), `~/.Codex-tracker/tracker_data.py` (Python script)
-- Auto-launch: `~/Library/LaunchAgents/com.sakthivel.claudetracker.plist`
+## Runtime Architecture
+- UI layer: Swift (`native/Launcher.swift`)
+- Data layer: Python (`tracker_data.py`)
+- Shared data file: `/tmp/claude_tracker_data.json`
 
-## Critical Architecture Note
-**Do NOT use a .app bundle.** macOS 16 blocks unsigned/ad-hoc signed `.app` bundles from registering NSStatusItems — the item never appears in the menu bar or Ice layout. Running as a plain binary (outside any bundle) works perfectly. This was confirmed through extensive debugging on 2026-04-29.
+Flow:
+1. Swift app starts as accessory app and renders menu bar UI.
+2. Swift ensures Python fetcher is running.
+3. Python fetches:
+   - Claude usage from `claude.ai` APIs
+   - Codex usage from `chatgpt.com` APIs
+4. Python writes unified payload to `/tmp/claude_tracker_data.json`.
+5. Swift polls and updates menu UI.
 
-## How It Works
-1. Binary launches, sets `NSApp.setActivationPolicy(.accessory)`, creates status item
-2. Python (`tracker_data.py`) is launched from `~/.Codex-tracker/`
-3. Python fetches `https://Codex.ai/api/organizations/{ORG_ID}/usage` using Chrome cookies
-4. Python writes JSON to `/tmp/claude_tracker_data.json` every 5 minutes
-5. Swift reads JSON every 10 seconds and updates menu bar
+## Refresh/Polling Defaults
+- Python normal refresh: 5 min
+- Python at-limit refresh: 1 min
+- Swift UI poll: 10 sec
 
-## Menu Bar Display
-- Title: `🟢🟢  W:23%  S:10%`  (weekly dot + session dot + percentages)
-- Dropdown: session progress bar, weekly progress bar, reset times, status, last updated
-- Dots: 🟢 <50% | 🟡 50–70% | 🔴 >70%
+## Current Install/Launch Paths
+- Binary: `~/.local/bin/claude-tracker`
+- Python script: `~/.claude-tracker/tracker_data.py`
+- LaunchAgent: `~/Library/LaunchAgents/com.sakthivel.claudetracker.plist`
+- macOS app launcher: `/Applications/Claude_Codex_Tracker.app`
+
+## Accounts and Auth
+- User must be logged in on Chrome for:
+  - `claude.ai`
+  - `chatgpt.com`
+- Cookies are read via `browser_cookie3`.
 
 ## Prerequisites
 ```bash
-pip3 install playwright browser_cookie3
+pip3 install playwright browser_cookie3 requests
 playwright install chromium
 ```
-Must be logged in to Codex.ai in Chrome before launching.
 
-## ORG_ID
-Sakthivel's org ID is hardcoded in `tracker_data.py`. If it changes, update `ORG_ID` there.
+## UI/Product Notes
+- Menu header currently shows:
+  - `Claude & Codex_Live Tracker`
+  - `Updated_HH:MM`
+- Session/Weekly rows are color-coded by usage threshold:
+  - `>= 90` red
+  - `>= 50` amber
+  - else green
+- Menu bar indicator dots follow the same threshold logic.
+
+## Working Rules for This Project
+- Prefer local code + screenshots for UI iteration.
+- Do not use web search for local UI styling/debugging unless explicitly requested.
+- Keep changes scoped and avoid unrelated refactors.
+
+## Error Prevention Rules (Mandatory)
+- If a mistake is identified by user feedback or self-review, update this `AGENTS.md` immediately with:
+  1. what went wrong,
+  2. root cause,
+  3. concrete prevention rule.
+- Apply the prevention rule in the same session before continuing.
+- Never repeat a known mistake without first checking this file.
+- Hard guardrail for this project: do not call the `web` tool at all unless the user explicitly asks for web lookup in that same prompt.
+
+## Mistake Learning Log
+### 2026-05-07 — Unnecessary web search during local UI work
+- What went wrong:
+  - Web search/tool was used while working on purely local tracker UI changes.
+- Root cause:
+  - Tool-selection discipline was not followed for a local-only task.
+- Prevention rule:
+  - For this tracker project, use only local files, local commands, and user screenshots unless the user explicitly asks for web lookup.
+
+### 2026-05-07 — Repeat: accidental web tool usage during local UI task
+- What went wrong:
+  - `web` tool was triggered again even though task was local UI tuning.
+- Root cause:
+  - Execution flow did not enforce the no-web guardrail strongly enough.
+- Prevention rule:
+  - Before any action on this project, verify: "Is this solvable via local code/screenshots?" If yes, prohibit `web` tool calls.
+  - Only allow `web` tool if user message explicitly asks to browse/search web.

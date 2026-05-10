@@ -58,9 +58,8 @@ def percent_str(value):
     return f"{value}%"
 
 
-def format_reset_iso(iso_str):
+def format_reset_datetime(dt):
     try:
-        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
         now = datetime.now(timezone.utc)
         diff = dt - now
         total_secs = int(diff.total_seconds())
@@ -75,19 +74,18 @@ def format_reset_iso(iso_str):
         return "—"
 
 
+def format_reset_iso(iso_str):
+    try:
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        return format_reset_datetime(dt)
+    except Exception:
+        return "—"
+
+
 def format_reset_epoch(epoch_seconds):
     try:
         dt = datetime.fromtimestamp(int(epoch_seconds), timezone.utc)
-        now = datetime.now(timezone.utc)
-        diff = dt - now
-        total_secs = int(diff.total_seconds())
-        if total_secs <= 0:
-            return "Resetting soon"
-        hours = total_secs // 3600
-        mins = (total_secs % 3600) // 60
-        if hours < 24:
-            return f"Resets in {hours}hr {mins}min" if hours > 0 else f"Resets in {mins}min"
-        return "Resets " + dt.astimezone().strftime("%a %-I:%M %p")
+        return format_reset_datetime(dt)
     except Exception:
         return "—"
 
