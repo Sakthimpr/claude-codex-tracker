@@ -905,6 +905,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         sectionHoverCount[group] = next
         let active = next > 0
         let rows = sectionViews[group] ?? []
+        let didEnter = (current == 0 && next > 0 && delta > 0)
+        let didExit = (current > 0 && next == 0 && delta < 0)
         for row in rows {
             row.wantsLayer = true
             CATransaction.begin()
@@ -929,7 +931,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
             }
             CATransaction.commit()
         }
+        if didEnter {
+            animateSectionBubble(rows)
+        } else if didExit {
+            settleSection(rows)
+        }
         applyHoverDisclosure()
+    }
+
+    func animateSectionBubble(_ rows: [NSView]) {
+        for row in rows {
+            row.wantsLayer = true
+            let anim = CAKeyframeAnimation(keyPath: "transform.scale")
+            anim.values = [1.0, 1.018, 1.006]
+            anim.keyTimes = [0.0, 0.55, 1.0]
+            anim.duration = 0.19
+            anim.timingFunctions = [
+                CAMediaTimingFunction(name: .easeOut),
+                CAMediaTimingFunction(name: .easeInEaseOut),
+            ]
+            row.layer?.add(anim, forKey: "section-bubble")
+        }
+    }
+
+    func settleSection(_ rows: [NSView]) {
+        for row in rows {
+            row.wantsLayer = true
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.12)
+            row.layer?.transform = CATransform3DIdentity
+            CATransaction.commit()
+        }
     }
 
     func applyHoverDisclosure() {
