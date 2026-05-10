@@ -11,7 +11,7 @@ cd /Users/sakthivelramasamy/Documents/Codex/claude_codex_tracker
 ```
 
 ## What `build.sh` does
-1. Verifies Python and required packages (`playwright`, `browser_cookie3`, `requests`)
+1. Verifies Python and required packages (`browser_cookie3`, `requests`)
 2. Compiles Swift menu binary from `native/Launcher.swift`
 3. Builds app icon from `assets/ClaudeCodexIcon1024.png`
 4. Installs binary to `~/.local/bin/claude-tracker`
@@ -53,8 +53,7 @@ Flow:
 
 ## Prerequisites
 ```bash
-pip3 install playwright browser_cookie3 requests
-playwright install chromium
+pip3 install browser_cookie3 requests
 ```
 
 ## UI/Product Notes

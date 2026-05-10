@@ -25,13 +25,13 @@ echo "✅  Python: $($PYTHON --version)  ($PYTHON)"
 
 echo "▶ Checking required packages..."
 MISSING=""
-for pkg in playwright browser_cookie3 requests; do
+for pkg in browser_cookie3 requests; do
     if ! $PYTHON -c "import $pkg" 2>/dev/null; then
         MISSING="$MISSING $pkg"
     fi
 done
 if [ -n "$MISSING" ]; then
-    echo "❌  Missing:$MISSING  →  pip3 install$MISSING && playwright install chromium"
+    echo "❌  Missing:$MISSING  →  pip3 install$MISSING"
     exit 1
 fi
 echo "✅  All packages present"
