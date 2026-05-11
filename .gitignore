@@ -10,3 +10,6 @@ __pycache__/
 *.pyc
 *.pyo
 *.log
+
+### Local-only notes ###
+AGENTS.md
