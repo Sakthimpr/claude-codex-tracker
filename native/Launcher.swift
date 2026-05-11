@@ -374,7 +374,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
     let usageRed = NSColor(calibratedRed: 0.84, green: 0.67, blue: 0.42, alpha: 1.0)
     let usageAmber = NSColor(calibratedRed: 0.86, green: 0.70, blue: 0.45, alpha: 1.0)
-    let usageGreen = NSColor(calibratedRed: 0.3686, green: 0.5216, blue: 0.5686, alpha: 1.0) // #5E8591
+    let usageGreen = NSColor(calibratedRed: 0.1843, green: 0.4784, blue: 0.3451, alpha: 1.0) // #2F7A58
     let usageHealthyGold = NSColor(calibratedRed: 0.8667, green: 0.7216, blue: 0.3569, alpha: 1.0)
     let usageCriticalAmber = NSColor(calibratedRed: 0.82, green: 0.67, blue: 0.38, alpha: 1.0)
     let usageCriticalRed = NSColor(calibratedRed: 1.00, green: 0.18, blue: 0.24, alpha: 1.0)
