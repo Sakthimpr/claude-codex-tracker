@@ -12,6 +12,7 @@ import json
 import os
 import time
 from datetime import datetime, timezone
+from tempfile import NamedTemporaryFile
 
 import requests
 
@@ -39,8 +40,26 @@ def now_str():
 
 def write_data(**kwargs):
     try:
-        with open(OUTPUT_FILE, "w") as f:
+        out_dir = os.path.dirname(OUTPUT_FILE) or "."
+        with NamedTemporaryFile(
+            mode="w",
+            dir=out_dir,
+            delete=False,
+            encoding="utf-8",
+        ) as f:
             json.dump(kwargs, f)
+            tmp_name = f.name
+
+        # Restrict to current user and atomically replace to avoid partial reads.
+        try:
+            os.chmod(tmp_name, 0o600)
+        except Exception:
+            pass
+        os.replace(tmp_name, OUTPUT_FILE)
+        try:
+            os.chmod(OUTPUT_FILE, 0o600)
+        except Exception:
+            pass
     except Exception:
         pass
 
