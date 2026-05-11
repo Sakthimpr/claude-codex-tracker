@@ -5,6 +5,8 @@ BINARY_NAME="claude-tracker"
 INSTALL_BIN="${HOME}/.local/bin/${BINARY_NAME}"
 INSTALL_DIR="${HOME}/.claude-tracker"
 DIST="dist"
+SWIFT_SRC="src/native/Launcher.swift"
+PYTHON_SRC="src/python/tracker_data.py"
 APP_NAME="Claude_Codex_Tracker.app"
 APP_DIR="/Applications/${APP_NAME}"
 APP_BIN="${APP_DIR}/Contents/MacOS/ClaudeTracker"
@@ -47,7 +49,7 @@ xcrun swiftc \
     -framework Cocoa \
     -target arm64-apple-macosx13.0 \
     -O \
-    native/Launcher.swift \
+    "${SWIFT_SRC}" \
     -o "${DIST}/${BINARY_NAME}"
 echo "✅  Compiled"
 
@@ -86,7 +88,7 @@ chmod +x "${INSTALL_BIN}"
 
 echo "▶ Installing tracker_data.py to ${INSTALL_DIR}..."
 mkdir -p "${INSTALL_DIR}"
-cp tracker_data.py "${INSTALL_DIR}/tracker_data.py"
+cp "${PYTHON_SRC}" "${INSTALL_DIR}/tracker_data.py"
 
 echo "▶ Creating launcher app in ${APP_DIR}..."
 rm -rf "${APP_DIR}"
