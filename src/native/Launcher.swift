@@ -1406,8 +1406,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         }
         if let range = text.range(of: pct, options: .backwards) {
             let nsRange = NSRange(range, in: text)
-            attr.addAttribute(.foregroundColor, value: pctColor, range: nsRange)
-            attr.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .bold), range: nsRange)
+            var pctDisplayColor = pctColor
+            if meterState(for: pct, isRemaining: showRemaining) == .healthy {
+                // Keep healthy percentages visibly green against dark section backgrounds.
+                pctDisplayColor = NSColor(calibratedRed: 0.16, green: 0.66, blue: 0.42, alpha: 1.0)
+            }
+            attr.addAttribute(.foregroundColor, value: pctDisplayColor, range: nsRange)
+            attr.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .heavy), range: nsRange)
         }
         if let chip, let chipRange = text.range(of: chip, options: .backwards) {
             let nsChipRange = NSRange(chipRange, in: text)
