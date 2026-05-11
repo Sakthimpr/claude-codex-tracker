@@ -5,7 +5,7 @@ Fetches usage from:
 - Claude API (direct authenticated requests via Chrome cookies)
 - Codex API (chatgpt.com authenticated API calls)
 
-Writes JSON to /tmp/claude_tracker_data.json for the Swift menu bar app.
+Writes JSON to ~/.cache/claude-codex-tracker/data.json for the Swift menu bar app.
 """
 
 import json
@@ -19,7 +19,7 @@ import requests
 REFRESH_INTERVAL = 300      # 5 minutes
 REFRESH_AT_LIMIT = 60       # 1 minute when at 100%
 COOKIE_CACHE_TTL = 3600     # re-read browser cookies once per hour
-OUTPUT_FILE = "/tmp/claude_tracker_data.json"
+OUTPUT_FILE = os.path.expanduser("~/.cache/claude-codex-tracker/data.json")
 
 CLAUDE_ORGS_API = "https://claude.ai/api/organizations"
 CLAUDE_ORG_ID = os.getenv("CLAUDE_ORG_ID", "").strip()
@@ -41,6 +41,7 @@ def now_str():
 def write_data(**kwargs):
     try:
         out_dir = os.path.dirname(OUTPUT_FILE) or "."
+        os.makedirs(out_dir, mode=0o700, exist_ok=True)
         with NamedTemporaryFile(
             mode="w",
             dir=out_dir,

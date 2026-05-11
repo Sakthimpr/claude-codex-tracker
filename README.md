@@ -13,7 +13,7 @@
 ## Runtime Architecture
 - UI layer: Swift (`native/Launcher.swift`)
 - Data layer: Python (`tracker_data.py`)
-- Shared data file: `/tmp/claude_tracker_data.json`
+- Shared data file: `~/.cache/claude-codex-tracker/data.json`
 
 Flow:
 1. Swift app starts as accessory app and renders menu bar UI.
@@ -21,7 +21,7 @@ Flow:
 3. Python fetches:
    - Claude usage from `claude.ai` APIs
    - Codex usage from `chatgpt.com` APIs
-4. Python writes unified payload to `/tmp/claude_tracker_data.json`.
+4. Python writes unified payload to `~/.cache/claude-codex-tracker/data.json`.
 5. Swift polls and updates menu UI.
 
 ## Refresh/Polling Defaults

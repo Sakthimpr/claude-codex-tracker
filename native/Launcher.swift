@@ -407,6 +407,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     var statusDotTexts: [String: String] = [:]
     var activeStatusDotKey: String?
     var pendingPopoverHide: DispatchWorkItem?
+    var sharedDataPath = NSHomeDirectory() + "/.cache/claude-codex-tracker/data.json"
 
     private let shortClockRegex = try! NSRegularExpression(pattern: #"\b\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?\b"#)
     private let shortHmRegex = try! NSRegularExpression(pattern: #"\b\d{1,2}:\d{2}\b"#)
@@ -1308,7 +1309,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     }
 
     func ensureFetcherHealthy() {
-        let path = "/tmp/claude_tracker_data.json"
+        let path = sharedDataPath
         let isRunning = pythonProcess?.isRunning ?? false
         let staleThreshold: TimeInterval = 420 // must be greater than normal Python 5-min refresh
 
@@ -1330,7 +1331,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     }
 
     func loadData() {
-        let path = "/tmp/claude_tracker_data.json"
+        let path = sharedDataPath
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
               let mtime = attrs[.modificationDate] as? Date
         else { return }
