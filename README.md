@@ -35,6 +35,8 @@ User must be logged in on Chrome for:
 - `chatgpt.com`
 
 Cookies are read via `browser_cookie3`.
+Claude org is auto-discovered from your authenticated Claude account.
+Optional override: set environment variable `CLAUDE_ORG_ID`.
 
 ## Prerequisites
 ```bash

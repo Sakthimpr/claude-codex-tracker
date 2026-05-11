@@ -9,6 +9,7 @@ Writes JSON to /tmp/claude_tracker_data.json for the Swift menu bar app.
 """
 
 import json
+import os
 import time
 from datetime import datetime, timezone
 
@@ -19,9 +20,8 @@ REFRESH_AT_LIMIT = 60       # 1 minute when at 100%
 COOKIE_CACHE_TTL = 3600     # re-read browser cookies once per hour
 OUTPUT_FILE = "/tmp/claude_tracker_data.json"
 
-CLAUDE_ORG_ID = "b8418e36-3c7f-4302-a9c4-07bec8c1f471"
-CLAUDE_USAGE_API = f"https://claude.ai/api/organizations/{CLAUDE_ORG_ID}/usage"
-CLAUDE_ORG_API = f"https://claude.ai/api/organizations/{CLAUDE_ORG_ID}"
+CLAUDE_ORGS_API = "https://claude.ai/api/organizations"
+CLAUDE_ORG_ID = os.getenv("CLAUDE_ORG_ID", "").strip()
 
 CHATGPT_SESSION_API = "https://chatgpt.com/api/auth/session"
 CODEX_USAGE_API = "https://chatgpt.com/backend-api/wham/usage"
@@ -189,6 +189,58 @@ def normalize_codex_plan(plan_type):
     return raw.upper()
 
 
+def _extract_org_id(payload):
+    if isinstance(payload, dict):
+        for key in ("id", "uuid", "organization_id", "org_id"):
+            v = payload.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+
+        for key in ("organization", "org", "active_organization", "current_organization"):
+            nested = payload.get(key)
+            found = _extract_org_id(nested)
+            if found:
+                return found
+
+        for key in ("organizations", "items", "results", "memberships", "data"):
+            nested = payload.get(key)
+            found = _extract_org_id(nested)
+            if found:
+                return found
+
+    if isinstance(payload, list):
+        for item in payload:
+            found = _extract_org_id(item)
+            if found:
+                return found
+
+    return None
+
+
+def resolve_claude_org_id(session):
+    if CLAUDE_ORG_ID:
+        return CLAUDE_ORG_ID
+
+    resp = session.get(
+        CLAUDE_ORGS_API,
+        headers={
+            "accept": "application/json, text/plain, */*",
+            "anthropic-client-platform": "web_claude_ai",
+            "origin": "https://claude.ai",
+            "referer": "https://claude.ai/",
+        },
+        timeout=20,
+    )
+    if resp.status_code != 200:
+        return None
+
+    try:
+        payload = resp.json()
+    except Exception:
+        return None
+    return _extract_org_id(payload)
+
+
 def fetch_claude_usage(consecutive_failures):
     try:
         cookies = get_claude_cookies(force=(consecutive_failures >= 2))
@@ -198,8 +250,15 @@ def fetch_claude_usage(consecutive_failures):
         session = requests.Session()
         session.cookies = cookies
 
+        org_id = resolve_claude_org_id(session)
+        if not org_id:
+            return default_block("Claude org not found — set CLAUDE_ORG_ID"), False, consecutive_failures + 1
+
+        claude_usage_api = f"https://claude.ai/api/organizations/{org_id}/usage"
+        claude_org_api = f"https://claude.ai/api/organizations/{org_id}"
+
         resp = session.get(
-            CLAUDE_USAGE_API,
+            claude_usage_api,
             headers={
                 "accept": "application/json, text/plain, */*",
                 "anthropic-client-platform": "web_claude_ai",
@@ -219,7 +278,7 @@ def fetch_claude_usage(consecutive_failures):
 
         data = resp.json()
         org_resp = session.get(
-            CLAUDE_ORG_API,
+            claude_org_api,
             headers={
                 "accept": "application/json, text/plain, */*",
                 "anthropic-client-platform": "web_claude_ai",
