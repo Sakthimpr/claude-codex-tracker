@@ -38,6 +38,20 @@ Cookies are read via `browser_cookie3`.
 Claude org is auto-discovered from your authenticated Claude account.
 Optional override: set environment variable `CLAUDE_ORG_ID`.
 
+Why auth flow differs between Claude and Codex:
+- Claude usage APIs accept cookie-authenticated requests directly.
+- Codex usage API requires a Bearer token header.
+- That token is obtained from `https://chatgpt.com/api/auth/session` using cookie-authenticated session first.
+
+If Chrome cookies are cleared:
+- Claude fetch will fail (login/session-expired style status).
+- Codex fetch will fail (login/auth-token-missing style status).
+- UI still runs, but shows error/status text instead of live usage data.
+
+Recovery:
+1. Log in again on Chrome for `claude.ai` and `chatgpt.com`.
+2. Wait for next refresh cycle or use `Refresh now` from the menu.
+
 ## Prerequisites
 ```bash
 pip3 install browser_cookie3 requests
