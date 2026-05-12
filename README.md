@@ -1,66 +1,107 @@
-# Claude + Codex Tracker
+# Claude & Codex Tracker
 
-## What `build.sh` does
-- Verifies Python and required packages (`browser_cookie3`, `requests`)
-- Compiles Swift menu binary from `src/native/Launcher.swift`
-- Builds app icon from `assets/ClaudeCodexIcon1024.png`
-- Installs binary to `~/.local/bin/claude-tracker`
-- Installs fetcher to `~/.claude-tracker/tracker_data.py` (copied from `src/python/tracker_data.py`)
-- Recreates launcher app at `/Applications/Claude_Codex_Tracker.app`
-- Rewrites/loads LaunchAgent at `~/Library/LaunchAgents/com.sakthivel.claudetracker.plist`
-- Launches the tracker
+A macOS menu bar app that shows your real-time usage for **Claude** (Anthropic) and **Codex** (OpenAI) — session limits, weekly limits, reset countdowns, and threshold warnings.
 
-## Runtime Architecture
-- UI layer: Swift (`src/native/Launcher.swift`)
-- Data layer: Python (`src/python/tracker_data.py`)
-- Shared data file: `~/.cache/claude-codex-tracker/data.json`
+Runs silently in the background. No Dock icon. Just a menu bar item you click when you need it.
 
-Flow:
-1. Swift app starts as accessory app and renders menu bar UI.
-2. Swift ensures Python fetcher is running.
-3. Python fetches:
-   - Claude usage from `claude.ai` APIs
-   - Codex usage from `chatgpt.com` APIs
-4. Python writes unified payload to `~/.cache/claude-codex-tracker/data.json`.
-5. Swift polls and updates menu UI.
-
-## Refresh/Polling Defaults
-- Python normal refresh: 5 min
-- Python at-limit refresh: 1 min
-- Swift UI poll: 10 sec
-
-## Accounts and Auth
-User must be logged in on Chrome for:
-- `claude.ai`
-- `chatgpt.com`
-
-Cookies are read via `browser_cookie3`.
-Claude org is auto-discovered from your authenticated Claude account.
-Optional override: set environment variable `CLAUDE_ORG_ID`.
-
-Why auth flow differs between Claude and Codex:
-- Claude usage APIs accept cookie-authenticated requests directly.
-- Codex usage API requires a Bearer token header.
-- That token is obtained from `https://chatgpt.com/api/auth/session` using cookie-authenticated session first.
-
-If Chrome cookies are cleared:
-- Claude fetch will fail (login/session-expired style status).
-- Codex fetch will fail (login/auth-token-missing style status).
-- UI still runs, but shows error/status text instead of live usage data.
-
-Recovery:
-1. Log in again on Chrome for `claude.ai` and `chatgpt.com`.
-2. Wait for next refresh cycle or use `Refresh now` from the menu.
+---
 
 ## Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| macOS 13 or later | Uses Cocoa menu bar and launchctl |
+| Google Chrome | Must be logged in to `claude.ai` and `chatgpt.com` |
+| Python 3 | `python3` must be available in PATH |
+| Xcode Command Line Tools | For compiling the Swift binary |
+
+**Install Xcode Command Line Tools** (if not already done):
+```bash
+xcode-select --install
+```
+
+**Install required Python packages:**
 ```bash
 pip3 install browser_cookie3 requests
 ```
 
-Also needed:
-- macOS (uses `launchctl`, app bundle install under `/Applications`, and menu bar UI)
-- Python 3 (`python3` available in PATH)
-- Xcode Command Line Tools (`xcrun swiftc`) for compiling `src/native/Launcher.swift`
-- Chrome installed with active login sessions for:
-  - `claude.ai`
-  - `chatgpt.com`
+---
+
+## Install
+
+```bash
+git clone https://github.com/Sakthimpr/claude-codex-tracker.git
+cd claude-codex-tracker
+bash build.sh
+```
+
+The tracker starts automatically and appears in your menu bar. It also registers a LaunchAgent so it restarts on every login — no manual steps needed.
+
+---
+
+## Verify it's working
+
+Click the menu bar icon. You should see usage dials for Claude and Codex load within a few seconds.
+
+If you see an error or dashes instead of numbers, make sure you are logged in to `claude.ai` and `chatgpt.com` in Chrome, then click **Refresh now**.
+
+---
+
+## Using the app
+
+| Action | How |
+|---|---|
+| View usage | Click the menu bar icon |
+| Switch used ↔ remaining % | Click **Show Remaining %** or press `⌘M` |
+| Open Claude usage page | Click **Open Claude Analytics** |
+| Open Codex usage page | Click **Open Codex Analytics** |
+| Force a refresh | Click **Refresh now** |
+| Quit | Click **Quit** |
+
+---
+
+## Troubleshooting
+
+**"Session expired" or auth errors**
+Log in again on Chrome for `claude.ai` and `chatgpt.com`, then click Refresh now.
+
+**"Claude org not found"**
+Set the environment variable `CLAUDE_ORG_ID` to your org UUID (visible in the `claude.ai` URL when browsing your account settings).
+
+**App not appearing after a reboot**
+Run `bash build.sh` again to reinstall and reload the LaunchAgent.
+
+**macOS blocked the app (Gatekeeper)**
+If you received a pre-built binary rather than building from source, right-click the app → Open → Open anyway. This is a one-time step.
+
+---
+
+## Uninstall
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.sakthivel.claudetracker.plist
+rm ~/Library/LaunchAgents/com.sakthivel.claudetracker.plist
+rm ~/.local/bin/claude-tracker
+rm -rf ~/.claude-tracker
+rm -rf /Applications/Claude_Codex_Tracker.app
+```
+
+---
+
+## How it works
+
+| Layer | File | Role |
+|---|---|---|
+| UI | `src/native/Launcher.swift` | Menu bar app — dials, colors, warning banners |
+| Data | `src/python/tracker_data.py` | Background daemon — fetches usage from APIs |
+| Shared state | `~/.cache/claude-codex-tracker/data.json` | Written by Python, read by Swift every 10s |
+
+**Auth:** Claude's API accepts cookie-authenticated requests directly. Codex requires a Bearer token, which the fetcher obtains from `chatgpt.com/api/auth/session` using your Chrome session.
+
+**Refresh intervals:** Every 5 minutes normally, every 1 minute when at the usage limit.
+
+---
+
+## Privacy
+
+This app reads Chrome cookies for `claude.ai` and `chatgpt.com` only. All data stays on your machine — nothing is sent anywhere other than the official Claude and Codex usage APIs.
