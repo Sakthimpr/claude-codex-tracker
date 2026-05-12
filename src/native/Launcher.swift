@@ -285,7 +285,7 @@ final class DialPairMenuRowView: NSView {
 
         // Centre percentage
         let pctFont  = NSFont.monospacedDigitSystemFont(ofSize: 16, weight: .bold)
-        let pctColor = clamp > 0 ? color : dimCol.withAlphaComponent(0.50)
+        let pctColor = clamp > 0 ? (color.blended(withFraction: 0.40, of: .white) ?? color) : dimCol.withAlphaComponent(0.50)
         let pctAttrs: [NSAttributedString.Key: Any] = [.foregroundColor: pctColor, .font: pctFont]
         let pctStr   = pct as NSString
         let pctSize  = pctStr.size(withAttributes: pctAttrs)
@@ -296,7 +296,7 @@ final class DialPairMenuRowView: NSView {
         // Warning symbol inside arc
         if warning {
             let wAttrs: [NSAttributedString.Key: Any] = [
-                .foregroundColor: NSColor(calibratedRed: 1.0, green: 0.18, blue: 0.24, alpha: 0.75),
+                .foregroundColor: NSColor(calibratedRed: 1.0, green: 0.18, blue: 0.24, alpha: 0.60),
                 .font: NSFont.systemFont(ofSize: 8, weight: .semibold)
             ]
             let ws = "⚠" as NSString
@@ -328,6 +328,49 @@ final class DialPairMenuRowView: NSView {
         rstStr.draw(at: CGPoint(x: center.x - rstSize.width / 2,
                                 y: arcBot - rstSize.height - 4),
                     withAttributes: rstAttrs)
+    }
+}
+
+final class WarnBannerView: NSView {
+    private let label = NSTextField(labelWithString: "")
+    var accentColor: NSColor = NSColor(calibratedRed: 0.86, green: 0.70, blue: 0.45, alpha: 1.0)
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        label.font = NSFont.systemFont(ofSize: 10.5, weight: .medium)
+        label.textColor = NSColor(calibratedWhite: 0.88, alpha: 1.0)
+        label.drawsBackground = false
+        label.isBezeled = false
+        label.isEditable = false
+        label.isSelectable = false
+        label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
+        addSubview(label)
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    func update(message: String, color: NSColor) {
+        label.stringValue = message
+        accentColor = color
+        needsDisplay = true
+    }
+
+    override func layout() {
+        super.layout()
+        label.frame = NSRect(x: 14, y: (bounds.height - 16) / 2,
+                             width: bounds.width - 18, height: 16)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        // Tinted background to make it read as a bar
+        accentColor.withAlphaComponent(0.22).setFill()
+        NSBezierPath(rect: bounds).fill()
+        // Left accent stripe
+        let stripe = NSBezierPath(rect: NSRect(x: 0, y: 0, width: 5, height: bounds.height))
+        accentColor.withAlphaComponent(0.95).setFill()
+        stripe.fill()
     }
 }
 
@@ -464,6 +507,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     var claudeWeeklyIsCapped = false
     var codexWeeklyIsCapped = false
 
+    var claudeWarningItem:  NSMenuItem!
+    var claudeWarningView:  WarnBannerView!
+    var codexWarningItem:   NSMenuItem!
+    var codexWarningView:   WarnBannerView!
+
     var pulseOn = false
     let rowWidth: CGFloat = 360
     let textWidth: CGFloat = 340
@@ -476,7 +524,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     let usageGreen = NSColor(calibratedRed: 0.1843, green: 0.4784, blue: 0.3451, alpha: 1.0) // #2F7A58
     let usageHealthyGold = NSColor(calibratedRed: 0.8667, green: 0.7216, blue: 0.3569, alpha: 1.0)
     let usageCriticalAmber = NSColor(calibratedRed: 0.82, green: 0.67, blue: 0.38, alpha: 1.0)
-    let usageCriticalRed = NSColor(calibratedRed: 1.00, green: 0.18, blue: 0.24, alpha: 0.75)
+    let usageCriticalRed = NSColor(calibratedRed: 1.00, green: 0.18, blue: 0.24, alpha: 0.60)
     let usageCappedMuted = NSColor(calibratedRed: 0.60, green: 0.57, blue: 0.52, alpha: 1.0)
     let panelTeal = NSColor(calibratedRed: 0.11, green: 0.13, blue: 0.17, alpha: 0.92)
     let actionHoverTeal = NSColor(calibratedRed: 0.16, green: 0.18, blue: 0.22, alpha: 0.95)
@@ -734,6 +782,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         return (item, dial)
     }
 
+    func makeWarnBannerRow(group: String) -> (NSMenuItem, WarnBannerView) {
+        let height: CGFloat = 30
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+        container.wantsLayer = true
+        let bg = panelColor(for: group)
+        container.layer?.backgroundColor = bg.cgColor
+        baseRowBackgrounds[ObjectIdentifier(container)] = bg.cgColor
+        sectionViews[group, default: []].append(container)
+        let banner = WarnBannerView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
+        banner.wantsLayer = true
+        banner.layer?.backgroundColor = bg.withAlphaComponent(0.18).cgColor
+        container.addSubview(banner)
+        let item = NSMenuItem()
+        item.view = container
+        return (item, banner)
+    }
+
     func makeActionRow(title: String, shortcut: String, action: Selector, keyEquivalent: String) -> (NSMenuItem, NSTextField) {
         let view = ClickableMenuRowView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: 24))
         view.wantsLayer = true
@@ -800,11 +865,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
         let header = headerText
 
-        let (h, lbH) = makeRow(text: "  ● Claude & Codex - Usage                         --:--", color: header, size: 13, bold: true, height: 30, mono: false)
+        let (h, lbH) = makeRow(text: "  ● Claude & Codex — Usage                         --:--", color: header, size: 13, bold: true, height: 40, mono: false)
         lbHeader = lbH
         if let hv = h.view {
             hv.wantsLayer = true
-            hv.layer?.backgroundColor = NSColor(calibratedRed: 0.10, green: 0.12, blue: 0.16, alpha: 0.95).cgColor
+            hv.layer?.backgroundColor = NSColor(calibratedRed: 0.06, green: 0.08, blue: 0.12, alpha: 1.0).cgColor
+            // Bottom separator line
+            let sep = CALayer()
+            sep.frame = CGRect(x: 0, y: 0, width: rowWidth, height: 1)
+            sep.backgroundColor = NSColor(calibratedWhite: 1.0, alpha: 0.10).cgColor
+            hv.layer?.addSublayer(sep)
         }
         appMenu.addItem(h)
         let claudeStartSpacer = makeSpacerRow(height: 6, hoverGroup: "claude")
@@ -821,7 +891,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         claudeDialItem = cdi
         claudeDialView = cdv
         appMenu.addItem(cdi)
-        appMenu.addItem(makeSpacerRow(height: 6, hoverGroup: "claude"))
+        appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "claude"))
+
+        let (cwi, cwv) = makeWarnBannerRow(group: "claude")
+        claudeWarningItem = cwi
+        claudeWarningView = cwv
+        claudeWarningItem.isHidden = true
+        appMenu.addItem(cwi)
+        appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "claude"))
 
         // Single subtle separator between Claude and Codex sections.
         let modelDivider = makeSeparatorRow(height: 8, group: "codex")
@@ -842,7 +919,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         codexDialItem = odi
         codexDialView = odv
         appMenu.addItem(odi)
-        appMenu.addItem(makeSpacerRow(height: 6, hoverGroup: "codex"))
+        appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "codex"))
+
+        let (cwxi, cwxv) = makeWarnBannerRow(group: "codex")
+        codexWarningItem = cwxi
+        codexWarningView = cwxv
+        codexWarningItem.isHidden = true
+        appMenu.addItem(cwxi)
+        appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "codex"))
 
         appMenu.addItem(makeSeparatorRow(height: 8, group: "footer"))
 
@@ -958,6 +1042,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
     func applyHoverDisclosure() {
         // Capped state is expressed visually within the dials — no items to show/hide.
+    }
+
+    func applyWarningBanner(
+        item: NSMenuItem, view: WarnBannerView,
+        sessionPct: String, weeklyPct: String,
+        sectionName: String, sessionReset: String, weeklyReset: String
+    ) {
+        let sVal = pctInt(sessionPct) ?? 0
+        let wVal = pctInt(weeklyPct)  ?? 0
+        let highest = max(sVal, wVal)
+        guard highest >= 80 else { item.isHidden = true; return }
+        let useWeekly = wVal >= sVal
+        let label     = useWeekly ? "weekly" : "session"
+        let pct       = useWeekly ? weeklyPct : sessionPct
+        let clock     = useWeekly
+            ? weeklyClockPhrase(weeklyReset)
+            : sessionClockPhrase(sessionReset, pct: sessionPct)
+        let color     = highest >= 100 ? usageCriticalRed : usageHealthyGold
+        let suffix    = clock.isEmpty ? "." : ". Resets \(clock)."
+        view.update(message: "⚠  \(sectionName) \(label) at \(pct)\(suffix)", color: color)
+        item.isHidden = false
     }
 
     func applySubBoxStyle(top: NSView?, middle: NSView?, bottom: NSView?, group: String?) {
@@ -1942,7 +2047,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     }
 
     func setHeaderLabel(dot: String, isLive: Bool, title: String, refreshText: String, dotColor: NSColor? = nil) {
-        let text = "  \(dot) \(title)\t\(refreshText)"
+        // title is expected to be "Claude & Codex — Usage"; split at " —" for hierarchy
+        let dashSuffix = " — Usage"
+        let mainTitle  = title.hasSuffix(dashSuffix)
+            ? String(title.dropLast(dashSuffix.count))
+            : title
+        let subTitle   = title.hasSuffix(dashSuffix) ? dashSuffix : ""
+        let text = "  \(dot) \(mainTitle)\(subTitle)\t\(refreshText)"
+
         let tabRight = (rowWidth - barInsetX) - textLeftX
         let paragraph = NSMutableParagraphStyle()
         paragraph.tabStops = [NSTextTab(textAlignment: .right, location: tabRight, options: [:])]
@@ -1951,10 +2063,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
             string: text,
             attributes: [
                 .foregroundColor: headerText,
-                .font: NSFont.systemFont(ofSize: 12.5, weight: .semibold),
+                .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
                 .paragraphStyle: paragraph,
             ]
         )
+        // Dot — colored and glowing
         if let dotRange = attr.string.range(of: dot) {
             let ns = NSRange(dotRange, in: attr.string)
             let liveColor = dotColor ?? NSColor(calibratedRed: 0.58, green: 0.90, blue: 0.62, alpha: 1.0)
@@ -1966,10 +2079,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
             glow.shadowOffset = .zero
             attr.addAttribute(.shadow, value: glow, range: ns)
         }
+        // "— Usage" suffix — slightly dimmer but readable
+        if !subTitle.isEmpty, let subRange = attr.string.range(of: subTitle) {
+            let ns = NSRange(subRange, in: attr.string)
+            attr.addAttribute(.foregroundColor, value: headerText.withAlphaComponent(0.65), range: ns)
+            attr.addAttribute(.font, value: NSFont.systemFont(ofSize: 12, weight: .regular), range: ns)
+        }
+        // "updated X:XX PM" — secondary but readable
         if let rightRange = attr.string.range(of: refreshText, options: .backwards) {
             let ns = NSRange(rightRange, in: attr.string)
-            attr.addAttribute(.foregroundColor, value: dimText.withAlphaComponent(0.92), range: ns)
-            attr.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium), range: ns)
+            attr.addAttribute(.foregroundColor, value: dimText.withAlphaComponent(0.82), range: ns)
+            attr.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 11.5, weight: .regular), range: ns)
         }
         lbHeader.attributedStringValue = attr
     }
@@ -2099,10 +2219,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         }
         let dot = "●"
         let refreshedClock = compactClock(updated).trimmingCharacters(in: .whitespacesAndNewlines)
-        let refreshText = headerClockDisplay(refreshedClock)
+        let refreshText = "updated " + headerClockDisplay(refreshedClock)
         let maxPct = [cSEffectiveView, cWView, oSEffectiveView, oWView].compactMap { pctInt($0) }.max() ?? 0
         let worstDotColor: NSColor = maxPct >= 80 ? usageCriticalRed : maxPct >= 50 ? usageHealthyGold : NSColor(calibratedRed: 0.58, green: 0.90, blue: 0.62, alpha: 1.0)
-        setHeaderLabel(dot: dot, isLive: isLive, title: "Claude & Codex - Usage", refreshText: refreshText, dotColor: worstDotColor)
+        setHeaderLabel(dot: dot, isLive: isLive, title: "Claude & Codex — Usage", refreshText: refreshText, dotColor: worstDotColor)
         let claudeCapped = isCappedState(cSEffectiveView, isRemaining: showRemaining)
         let codexCapped = isCappedState(oSEffectiveView, isRemaining: showRemaining)
         claudeIsCapped = claudeCapped
@@ -2146,6 +2266,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         codexDialView.rightWarning   = isCriticalState(oWView, isRemaining: showRemaining)
         codexDialView.rightGlow      = codexWeeklyCapped ? 0.20 : 1.0
         codexDialView.rightReset     = weeklyCountdownPhrase(oWReset) + " · " + weeklyClockPhrase(oWReset)
+
+        applyWarningBanner(item: claudeWarningItem, view: claudeWarningView,
+                           sessionPct: cSEffectiveView, weeklyPct: cWView,
+                           sectionName: "Claude", sessionReset: cSReset, weeklyReset: cWReset)
+        applyWarningBanner(item: codexWarningItem, view: codexWarningView,
+                           sessionPct: oSEffectiveView, weeklyPct: oWView,
+                           sectionName: "Codex", sessionReset: oSReset, weeklyReset: oWReset)
 
         let toggleTitle = showRemaining ? "✓ Show Remaining %" : "Show Remaining %"
         toggleUsageModeItem.title = toggleTitle
