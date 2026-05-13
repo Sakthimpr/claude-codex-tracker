@@ -1248,12 +1248,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     func ensureStatusDotPopover() {
         if statusDotPopover != nil { return }
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 44))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 160, height: 44))
         content.wantsLayer = true
         content.layer?.backgroundColor = NSColor(calibratedWhite: 0.12, alpha: 0.98).cgColor
 
         let rowH: CGFloat = 22
-        let rowW: CGFloat = 216
+        let rowW: CGFloat = 146
         let startX: CGFloat = 7
 
         let cl5hRow  = StatusTooltipRowView(accentColor: usageGreen)
@@ -1303,6 +1303,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         for (k, row) in statusDotRows { row.isHidden = (k != key) }
         refreshStatusDotPopoverRows()
         guard let pop = statusDotPopover, let button = statusItem.button else { return }
+
+        // Resize popover to exactly fit the text for this dot — no fixed width.
+        // Use boundingRect (not NSString.size) because ↻ renders via font fallback
+        // (Apple Symbols) and comes out wider than SF Pro measures it.
+        let text = statusDotTexts[key] ?? ""
+        let font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        let attrStr = NSAttributedString(string: text, attributes: [.font: font])
+        let measuredW = attrStr.boundingRect(
+            with: CGSize(width: 9999, height: 44),
+            options: [.usesLineFragmentOrigin, .usesFontLeading]
+        ).width
+        // 26 = startX(7) + labelPad(6) + labelPad(6) + rightMargin(7)
+        // +10 safety for font-fallback rounding on Unicode symbols like ↻
+        let newW = max(160, ceil(measuredW) + 36)
+        if let content = pop.contentViewController?.view {
+            content.frame = NSRect(x: 0, y: 0, width: newW, height: 44)
+            statusDotRows[key]?.frame = NSRect(x: 7, y: 11, width: newW - 14, height: 22)
+            pop.contentSize = content.frame.size
+        }
+
         if pop.isShown { pop.close() }
         pop.show(relativeTo: dotRect, of: button, preferredEdge: .maxY)
     }
@@ -1379,11 +1399,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
         func tip(_ label: String, _ val: String, _ reset: String) -> String {
             let r = reset.trimmingCharacters(in: .whitespacesAndNewlines)
-            return r.isEmpty ? "\(label) · \(val)" : "\(label) · \(val) · \(r)"
+            return r.isEmpty ? "\(label) · \(val)" : "\(label) · \(val) · ↻ \(r)"
         }
-        statusDotTexts["cl_5h"]     = tip("Claude Session", claudeSessionValue, shortCountdown(claudeSessionReset))
+        statusDotTexts["cl_5h"]     = tip("Claude Current", claudeSessionValue, shortCountdown(claudeSessionReset))
         statusDotTexts["cl_weekly"] = tip("Claude Weekly",  claudeWeeklyValue,  weeklyClockPhrase(claudeWeeklyReset))
-        statusDotTexts["co_5h"]     = tip("Codex Session",  codexSessionValue,  shortCountdown(codexSessionReset))
+        statusDotTexts["co_5h"]     = tip("Codex Current",  codexSessionValue,  shortCountdown(codexSessionReset))
         statusDotTexts["co_weekly"] = tip("Codex Weekly",   codexWeeklyValue,   weeklyClockPhrase(codexWeeklyReset))
         statusDotColors["cl_5h"]     = barColorForValue(claudeSessionValue, isRemaining: showRemaining)
         statusDotColors["cl_weekly"] = barColorForValue(claudeWeeklyValue,  isRemaining: showRemaining)
