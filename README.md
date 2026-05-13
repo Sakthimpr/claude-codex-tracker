@@ -6,6 +6,22 @@ Runs silently in the background. No Dock icon. Just a menu bar item you click wh
 
 ---
 
+## Screenshots
+
+**Menu bar — status dots at a glance:**
+
+![Menu bar dots](assets/screenshot_menubar.png)
+
+**Usage dials — consumed % view (default):**
+
+![Main UI](assets/screenshot_main.png)
+
+**Usage dials — remaining % view (`⌘M` to toggle):**
+
+![Remaining mode](assets/screenshot_remaining.png)
+
+---
+
 ## Prerequisites
 
 | Requirement | Notes |
