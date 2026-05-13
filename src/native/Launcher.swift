@@ -443,7 +443,7 @@ final class StatusDotTooltipView: NSView {
 
 final class StatusTooltipRowView: NSView {
     let label = NSTextField(labelWithString: "")
-    let accentColor: NSColor
+    var accentColor: NSColor
 
     init(accentColor: NSColor) {
         self.accentColor = accentColor
@@ -546,14 +546,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     var sectionHoverCount: [String: Int] = ["claude": 0, "codex": 0]
     var baseRowBackgrounds: [ObjectIdentifier: CGColor] = [:]
     var lastDataMTime: Date?
+    var claudeSessionDotTipView: StatusDotTooltipView?
     var claudeWeeklyDotTipView: StatusDotTooltipView?
     var codexSessionDotTipView: StatusDotTooltipView?
     var codexWeeklyDotTipView: StatusDotTooltipView?
     var statusDotPopover: NSPopover?
     var statusDotRows: [String: StatusTooltipRowView] = [:]
     var statusDotTexts: [String: String] = [:]
+    var statusDotColors: [String: NSColor] = [:]
     var activeStatusDotKey: String?
     var pendingPopoverHide: DispatchWorkItem?
+    var globalMouseMonitor: Any?
     var sharedDataPath = NSHomeDirectory() + "/.cache/claude-codex-tracker/data.json"
 
     private let shortClockRegex = try! NSRegularExpression(pattern: #"\b\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?\b"#)
@@ -600,6 +603,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         buildMenu()
         buildStatusItem()
         startPolling()
+        setupGlobalMouseMonitor()
         DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 0.5) {
             self.launchPython()
         }
@@ -1047,18 +1051,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     func applyWarningBanner(
         item: NSMenuItem, view: WarnBannerView,
         sessionPct: String, weeklyPct: String,
-        sectionName: String, sessionReset: String, weeklyReset: String
+        sectionName: String, sessionReset: String, weeklyReset: String,
+        isRemaining: Bool
     ) {
-        let sVal = pctInt(sessionPct) ?? 0
-        let wVal = pctInt(weeklyPct)  ?? 0
-        let highest = max(sVal, wVal)
-        guard highest >= 80 else { item.isHidden = true; return }
-        let useWeekly = wVal >= sVal
+        let sState = meterState(for: sessionPct, isRemaining: isRemaining)
+        let wState = meterState(for: weeklyPct,  isRemaining: isRemaining)
+        let sCritical = sState == .critical || sState == .capped
+        let wCritical = wState == .critical || wState == .capped
+        guard sCritical || wCritical else { item.isHidden = true; return }
+
+        // Determine effective "used" value for severity comparison
+        let sUsed = isRemaining ? (100 - (pctInt(sessionPct) ?? 0)) : (pctInt(sessionPct) ?? 0)
+        let wUsed = isRemaining ? (100 - (pctInt(weeklyPct)  ?? 0)) : (pctInt(weeklyPct)  ?? 0)
+        let useWeekly = wCritical && wUsed >= sUsed
         let label     = useWeekly ? "weekly" : "session"
         let pct       = useWeekly ? weeklyPct : sessionPct
         let clock     = useWeekly
             ? weeklyClockPhrase(weeklyReset)
             : sessionClockPhrase(sessionReset, pct: sessionPct)
+        let highest   = max(sUsed, wUsed)
         let color     = highest >= 100 ? usageCriticalRed : usageHealthyGold
         let suffix    = clock.isEmpty ? "." : ". Resets \(clock)."
         view.update(message: "⚠  \(sectionName) \(label) at \(pct)\(suffix)", color: color)
@@ -1204,6 +1215,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     }
 
     func ensureStatusDotTooltipViews(on button: NSStatusBarButton) {
+        if claudeSessionDotTipView == nil {
+            let v = StatusDotTooltipView(frame: .zero)
+            v.metricKey = "cl_5h"
+            v.hoverDelegate = self
+            button.addSubview(v)
+            claudeSessionDotTipView = v
+        }
         if claudeWeeklyDotTipView == nil {
             let v = StatusDotTooltipView(frame: .zero)
             v.metricKey = "cl_weekly"
@@ -1230,33 +1248,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     func ensureStatusDotPopover() {
         if statusDotPopover != nil { return }
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 222, height: 82))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 44))
         content.wantsLayer = true
-        content.layer?.cornerRadius = 9
-        content.layer?.masksToBounds = true
-        content.layer?.backgroundColor = NSColor(calibratedWhite: 0.15, alpha: 0.96).cgColor
-        content.layer?.borderWidth = 1
-        content.layer?.borderColor = NSColor(calibratedWhite: 1.0, alpha: 0.12).cgColor
+        content.layer?.backgroundColor = NSColor(calibratedWhite: 0.12, alpha: 0.98).cgColor
 
         let rowH: CGFloat = 22
-        let rowW: CGFloat = 208
+        let rowW: CGFloat = 216
         let startX: CGFloat = 7
-        let topY: CGFloat = 53
-        let gap: CGFloat = 3
 
-        let clRow = StatusTooltipRowView(accentColor: NSColor(calibratedRed: 0.94, green: 0.44, blue: 0.47, alpha: 1.0))
-        clRow.frame = NSRect(x: startX, y: topY, width: rowW, height: rowH)
-        let co5hRow = StatusTooltipRowView(accentColor: NSColor(calibratedRed: 0.35, green: 0.70, blue: 0.52, alpha: 1.0))
-        co5hRow.frame = NSRect(x: startX, y: topY - (rowH + gap), width: rowW, height: rowH)
-        let coWRow = StatusTooltipRowView(accentColor: NSColor(calibratedRed: 0.82, green: 0.68, blue: 0.42, alpha: 1.0))
-        coWRow.frame = NSRect(x: startX, y: topY - ((rowH + gap) * 2), width: rowW, height: rowH)
+        let cl5hRow  = StatusTooltipRowView(accentColor: usageGreen)
+        cl5hRow.frame  = NSRect(x: startX, y: 11, width: rowW, height: rowH)
+        let clWRow   = StatusTooltipRowView(accentColor: usageGreen)
+        clWRow.frame   = NSRect(x: startX, y: 11, width: rowW, height: rowH)
+        let co5hRow  = StatusTooltipRowView(accentColor: usageGreen)
+        co5hRow.frame  = NSRect(x: startX, y: 11, width: rowW, height: rowH)
+        let coWRow   = StatusTooltipRowView(accentColor: usageGreen)
+        coWRow.frame   = NSRect(x: startX, y: 11, width: rowW, height: rowH)
 
-        content.addSubview(clRow)
+        content.addSubview(cl5hRow)
+        content.addSubview(clWRow)
         content.addSubview(co5hRow)
         content.addSubview(coWRow)
 
-        statusDotRows["cl_weekly"] = clRow
-        statusDotRows["co_5h"] = co5hRow
+        statusDotRows["cl_5h"]     = cl5hRow
+        statusDotRows["cl_weekly"] = clWRow
+        statusDotRows["co_5h"]     = co5hRow
         statusDotRows["co_weekly"] = coWRow
 
         let vc = NSViewController()
@@ -1265,6 +1281,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let pop = NSPopover()
         pop.behavior = .applicationDefined
         pop.animates = false
+        pop.appearance = NSAppearance(named: .darkAqua)
         pop.contentSize = content.frame.size
         pop.contentViewController = vc
         statusDotPopover = pop
@@ -1272,97 +1289,133 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
     func refreshStatusDotPopoverRows() {
         let activeKey = activeStatusDotKey
-        let ordered: [String] = ["cl_weekly", "co_5h", "co_weekly"]
+        let ordered: [String] = ["cl_5h", "cl_weekly", "co_5h", "co_weekly"]
         for key in ordered {
             guard let row = statusDotRows[key] else { continue }
+            if let color = statusDotColors[key] { row.accentColor = color }
             let text = statusDotTexts[key] ?? ""
             row.update(text: text, active: key == activeKey)
         }
     }
 
-    func showStatusDotPopover(anchor: NSView) {
+    func showStatusDotPopover(dotRect: NSRect, forKey key: String) {
         ensureStatusDotPopover()
+        for (k, row) in statusDotRows { row.isHidden = (k != key) }
         refreshStatusDotPopoverRows()
-        guard let pop = statusDotPopover else { return }
-        if pop.isShown {
-            pop.close()
-        }
-        pop.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .maxY)
+        guard let pop = statusDotPopover, let button = statusItem.button else { return }
+        if pop.isShown { pop.close() }
+        pop.show(relativeTo: dotRect, of: button, preferredEdge: .maxY)
     }
 
     func hideStatusDotPopover() {
         statusDotPopover?.close()
     }
 
-    func statusDotHoverChanged(key: String, entered: Bool, anchor: NSView) {
-        pendingPopoverHide?.cancel()
-        pendingPopoverHide = nil
-        if entered {
-            activeStatusDotKey = key
-            showStatusDotPopover(anchor: anchor)
+    func setupGlobalMouseMonitor() {
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+            DispatchQueue.main.async { self?.handleGlobalMouseMove() }
+        }
+    }
+
+    func handleGlobalMouseMove() {
+        guard let button = statusItem.button, let window = button.window else { return }
+        let mouseScreen = NSEvent.mouseLocation
+        let buttonScreenFrame = window.convertToScreen(button.convert(button.bounds, to: nil))
+
+        guard buttonScreenFrame.contains(mouseScreen) else {
+            guard statusDotPopover?.isShown == true || activeStatusDotKey != nil else { return }
+            pendingPopoverHide?.cancel()
+            let task = DispatchWorkItem { [weak self] in
+                self?.activeStatusDotKey = nil
+                self?.hideStatusDotPopover()
+            }
+            pendingPopoverHide = task
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: task)
             return
         }
-        let hideTask = DispatchWorkItem { [weak self] in
+
+        pendingPopoverHide?.cancel()
+        pendingPopoverHide = nil
+
+        let mouseInWindow = window.convertFromScreen(NSRect(origin: mouseScreen, size: .zero)).origin
+        let mouseInButton = button.convert(mouseInWindow, from: nil)
+
+        let dotViews: [(String, StatusDotTooltipView?)] = [
+            ("cl_5h",     claudeSessionDotTipView),
+            ("cl_weekly", claudeWeeklyDotTipView),
+            ("co_5h",     codexSessionDotTipView),
+            ("co_weekly", codexWeeklyDotTipView),
+        ]
+
+        for (key, view) in dotViews {
+            guard let view = view, view.frame.contains(mouseInButton) else { continue }
+            guard activeStatusDotKey != key else { return }
+            activeStatusDotKey = key
+            showStatusDotPopover(dotRect: view.frame, forKey: key)
+            return
+        }
+
+        let task = DispatchWorkItem { [weak self] in
             self?.activeStatusDotKey = nil
             self?.hideStatusDotPopover()
         }
-        pendingPopoverHide = hideTask
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.10, execute: hideTask)
+        pendingPopoverHide = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: task)
+    }
+
+    func statusDotHoverChanged(key: String, entered: Bool, anchor: NSView) {
+        // Kept for protocol conformance — hover is driven by globalMouseMonitor now.
     }
 
     func updateStatusDotTooltips(
-        claudeWeeklyValue: String,
-        codexSessionValue: String,
-        codexWeeklyValue: String,
-        cWDot: String,
-        oSDot: String,
-        oWDot: String
+        claudeSessionValue: String, claudeSessionReset: String,
+        claudeWeeklyValue: String,  claudeWeeklyReset: String,
+        codexSessionValue: String,  codexSessionReset: String,
+        codexWeeklyValue: String,   codexWeeklyReset: String,
+        cSDot: String, cWDot: String, oSDot: String, oWDot: String
     ) {
         guard let button = statusItem.button else { return }
         ensureStatusDotTooltipViews(on: button)
 
-        statusDotTexts["cl_weekly"] = "CL • Claude Weekly • \(claudeWeeklyValue)"
-        statusDotTexts["co_5h"] = "CO • Codex 5H • \(codexSessionValue)"
-        statusDotTexts["co_weekly"] = "CO • Codex Weekly • \(codexWeeklyValue)"
+        func tip(_ label: String, _ val: String, _ reset: String) -> String {
+            let r = reset.trimmingCharacters(in: .whitespacesAndNewlines)
+            return r.isEmpty ? "\(label) · \(val)" : "\(label) · \(val) · \(r)"
+        }
+        statusDotTexts["cl_5h"]     = tip("Claude Session", claudeSessionValue, shortCountdown(claudeSessionReset))
+        statusDotTexts["cl_weekly"] = tip("Claude Weekly",  claudeWeeklyValue,  weeklyClockPhrase(claudeWeeklyReset))
+        statusDotTexts["co_5h"]     = tip("Codex Session",  codexSessionValue,  shortCountdown(codexSessionReset))
+        statusDotTexts["co_weekly"] = tip("Codex Weekly",   codexWeeklyValue,   weeklyClockPhrase(codexWeeklyReset))
+        statusDotColors["cl_5h"]     = barColorForValue(claudeSessionValue, isRemaining: showRemaining)
+        statusDotColors["cl_weekly"] = barColorForValue(claudeWeeklyValue,  isRemaining: showRemaining)
+        statusDotColors["co_5h"]     = barColorForValue(codexSessionValue,  isRemaining: showRemaining)
+        statusDotColors["co_weekly"] = barColorForValue(codexWeeklyValue,   isRemaining: showRemaining)
         refreshStatusDotPopoverRows()
 
         let font = button.font ?? NSFont.systemFont(ofSize: 11, weight: .regular)
-        let full = "CL\(cWDot) CO\(oSDot)\(oWDot)"
+        let full = "CL\(cSDot)\(cWDot) CO\(oSDot)\(oWDot)"
         let totalW = statusTitleWidth(full, font: font)
         let startX = max(0, floor((button.bounds.width - totalW) / 2.0))
         let fullHeight = button.bounds.height
 
-        let cWStart = startX + statusTitleWidth("CL", font: font)
+        let cSStart = startX + statusTitleWidth("CL", font: font)
+        let cSWidth = statusTitleWidth(cSDot, font: font)
+        let cWStart = startX + statusTitleWidth("CL\(cSDot)", font: font)
         let cWWidth = statusTitleWidth(cWDot, font: font)
-        let oSStart = startX + statusTitleWidth("CL\(cWDot) CO", font: font)
+        let oSStart = startX + statusTitleWidth("CL\(cSDot)\(cWDot) CO", font: font)
         let oSWidth = statusTitleWidth(oSDot, font: font)
-        let oWStart = startX + statusTitleWidth("CL\(cWDot) CO\(oSDot)", font: font)
+        let oWStart = startX + statusTitleWidth("CL\(cSDot)\(cWDot) CO\(oSDot)", font: font)
         let oWWidth = statusTitleWidth(oWDot, font: font)
 
-        let minHitW: CGFloat = 11
-        let pad: CGFloat = 2
-        claudeWeeklyDotTipView?.frame = NSRect(
-            x: cWStart - pad,
-            y: 0,
-            width: max(minHitW, cWWidth + pad * 2),
-            height: fullHeight
-        )
-        codexSessionDotTipView?.frame = NSRect(
-            x: oSStart - pad,
-            y: 0,
-            width: max(minHitW, oSWidth + pad * 2),
-            height: fullHeight
-        )
-        codexWeeklyDotTipView?.frame = NSRect(
-            x: oWStart - pad,
-            y: 0,
-            width: max(minHitW, oWWidth + pad * 2),
-            height: fullHeight
-        )
-        // Disable native tooltip bubbles to avoid duplicate tooltip UI with custom popover.
+        let minHitW: CGFloat = 14
+        let pad: CGFloat = 4
+        claudeSessionDotTipView?.frame = NSRect(x: cSStart - pad, y: 0, width: max(minHitW, cSWidth + pad * 2), height: fullHeight)
+        claudeWeeklyDotTipView?.frame  = NSRect(x: cWStart - pad, y: 0, width: max(minHitW, cWWidth + pad * 2), height: fullHeight)
+        codexSessionDotTipView?.frame  = NSRect(x: oSStart - pad, y: 0, width: max(minHitW, oSWidth + pad * 2), height: fullHeight)
+        codexWeeklyDotTipView?.frame   = NSRect(x: oWStart - pad, y: 0, width: max(minHitW, oWWidth + pad * 2), height: fullHeight)
+        claudeSessionDotTipView?.toolTip = nil
         claudeWeeklyDotTipView?.toolTip = nil
         codexSessionDotTipView?.toolTip = nil
-        codexWeeklyDotTipView?.toolTip = nil
+        codexWeeklyDotTipView?.toolTip  = nil
     }
 
     func launchPython() {
@@ -1686,11 +1739,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     }
 
     func meterState(for pct: String, isRemaining: Bool) -> MeterState {
-        _ = isRemaining
         guard let n = pctInt(pct) else { return .unknown }
-        if n >= 100 { return .capped }
-        if n >= 80 { return .critical }
-        if n >= 50 { return .watch }
+        let effective = isRemaining ? (100 - n) : n
+        if effective >= 100 { return .capped }
+        if effective >= 80  { return .critical }
+        if effective >= 50  { return .watch }
         return .healthy
     }
 
@@ -2199,19 +2252,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let cSEffectiveView = claudeWeeklyCapped ? (showRemaining ? "0%" : "100%") : cSView
         let oSEffectiveView = codexWeeklyCapped ? (showRemaining ? "0%" : "100%") : oSView
 
+        let cSDot = cSEffectiveView != "—" ? colorDotForValue(cSEffectiveView, isRemaining: showRemaining) : "⚪"
         let cWDot = cWView != "—" ? colorDotForValue(cWView, isRemaining: showRemaining) : "⚪"
-        let oWDot = oWView != "—" ? colorDotForValue(oWView, isRemaining: showRemaining) : "⚪"
         let oSDot = oSEffectiveView != "—" ? colorDotForValue(oSEffectiveView, isRemaining: showRemaining) : "⚪"
+        let oWDot = oWView != "—" ? colorDotForValue(oWView, isRemaining: showRemaining) : "⚪"
 
         pulseOn.toggle()
         let isLive = (cStatus == "Live") || (oStatus == "Live")
-        statusItem.button?.title = "CL\(cWDot) CO\(oSDot)\(oWDot)"
+        statusItem.button?.title = "CL\(cSDot)\(cWDot) CO\(oSDot)\(oWDot)"
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.updateStatusDotTooltips(
-                claudeWeeklyValue: cWView,
-                codexSessionValue: oSEffectiveView,
-                codexWeeklyValue: oWView,
+                claudeSessionValue: cSEffectiveView, claudeSessionReset: cSReset,
+                claudeWeeklyValue:  cWView,           claudeWeeklyReset:  cWReset,
+                codexSessionValue:  oSEffectiveView,  codexSessionReset:  oSReset,
+                codexWeeklyValue:   oWView,            codexWeeklyReset:   oWReset,
+                cSDot: cSDot,
                 cWDot: cWDot,
                 oSDot: oSDot,
                 oWDot: oWDot
@@ -2219,9 +2275,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         }
         let dot = "●"
         let refreshedClock = compactClock(updated).trimmingCharacters(in: .whitespacesAndNewlines)
-        let refreshText = "updated " + headerClockDisplay(refreshedClock)
-        let maxPct = [cSEffectiveView, cWView, oSEffectiveView, oWView].compactMap { pctInt($0) }.max() ?? 0
-        let worstDotColor: NSColor = maxPct >= 80 ? usageCriticalRed : maxPct >= 50 ? usageHealthyGold : NSColor(calibratedRed: 0.58, green: 0.90, blue: 0.62, alpha: 1.0)
+        let refreshText = "↻ " + headerClockDisplay(refreshedClock)
+        let maxUsed = [cSEffectiveView, cWView, oSEffectiveView, oWView].compactMap { pctInt($0) }.map { showRemaining ? (100 - $0) : $0 }.max() ?? 0
+        let worstDotColor: NSColor = maxUsed >= 80 ? usageCriticalRed : maxUsed >= 50 ? usageHealthyGold : NSColor(calibratedRed: 0.58, green: 0.90, blue: 0.62, alpha: 1.0)
         setHeaderLabel(dot: dot, isLive: isLive, title: "Claude & Codex — Usage", refreshText: refreshText, dotColor: worstDotColor)
         let claudeCapped = isCappedState(cSEffectiveView, isRemaining: showRemaining)
         let codexCapped = isCappedState(oSEffectiveView, isRemaining: showRemaining)
@@ -2269,12 +2325,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
         applyWarningBanner(item: claudeWarningItem, view: claudeWarningView,
                            sessionPct: cSEffectiveView, weeklyPct: cWView,
-                           sectionName: "Claude", sessionReset: cSReset, weeklyReset: cWReset)
+                           sectionName: "Claude", sessionReset: cSReset, weeklyReset: cWReset,
+                           isRemaining: showRemaining)
         applyWarningBanner(item: codexWarningItem, view: codexWarningView,
                            sessionPct: oSEffectiveView, weeklyPct: oWView,
-                           sectionName: "Codex", sessionReset: oSReset, weeklyReset: oWReset)
+                           sectionName: "Codex", sessionReset: oSReset, weeklyReset: oWReset,
+                           isRemaining: showRemaining)
 
-        let toggleTitle = showRemaining ? "✓ Show Remaining %" : "Show Remaining %"
+        let toggleTitle = showRemaining ? "Show Consumed %" : "Show Remaining %"
         toggleUsageModeItem.title = toggleTitle
         setActionRowLabel(lbToggleActionTitle, title: toggleTitle, shortcut: toggleShortcutText)
         applyHoverDisclosure()
@@ -2325,6 +2383,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     func applicationWillTerminate(_ notification: Notification) {
         isQuitting = true
         pythonProcess?.terminate()
+        if let m = globalMouseMonitor { NSEvent.removeMonitor(m) }
     }
 }
 
