@@ -110,6 +110,13 @@ Set the environment variable `CLAUDE_ORG_ID` to your org UUID (visible in the `c
 **App not appearing after a reboot**
 Run `bash build.sh` again to reinstall and reload the LaunchAgent.
 
+**Menu bar icon not visible (too many items)**
+The app is still running — the icon is just hidden because your menu bar is full. On MacBooks with a notch, items that overflow behind it disappear silently.
+
+- Verify the app is running: `pgrep claude-tracker` in Terminal should return a process ID
+- **Free up space:** Hold `⌘` and drag less-used menu bar icons to the other side of the notch — or off the bar entirely to remove them
+- **Manage hidden icons:** Use [Ice](https://github.com/jordanbaird/Ice) (free, open source) or [Bartender](https://www.macbartender.com) (paid) to reveal and organise hidden menu bar items
+
 **macOS blocked the app (Gatekeeper)**
 If you received a pre-built binary rather than building from source, right-click the app → Open → Open anyway. This is a one-time step.
 
