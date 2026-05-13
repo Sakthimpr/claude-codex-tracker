@@ -102,23 +102,22 @@ If you see an error or dashes instead of numbers, make sure you are logged in to
 ## Troubleshooting
 
 **"Session expired" or auth errors**
-Log in again on Chrome for `claude.ai` and `chatgpt.com`, then click Refresh now.
+- Log in again to `claude.ai` and `chatgpt.com` in Chrome, then click **Refresh now**
 
 **"Claude org not found"**
-Set the environment variable `CLAUDE_ORG_ID` to your org UUID (visible in the `claude.ai` URL when browsing your account settings).
+- Set the environment variable `CLAUDE_ORG_ID` to your org UUID (visible in the `claude.ai` URL under account settings)
 
 **App not appearing after a reboot**
-Run `bash build.sh` again to reinstall and reload the LaunchAgent.
+- Run `bash build.sh` to reinstall and reload the LaunchAgent
 
 **Menu bar icon not visible (too many items)**
-The app is still running — the icon is just hidden because your menu bar is full. On MacBooks with a notch, items that overflow behind it disappear silently.
-
-- Verify the app is running: `pgrep claude-tracker` in Terminal should return a process ID
-- **Free up space:** Hold `⌘` and drag less-used menu bar icons to the other side of the notch — or off the bar entirely to remove them
-- **Manage hidden icons:** Use [Ice](https://github.com/jordanbaird/Ice) (free, open source) or [Bartender](https://www.macbartender.com) (paid) to reveal and organise hidden menu bar items
+- The app is still running — the icon is hidden because your menu bar is full
+- Run `pgrep claude-tracker` in Terminal — a process ID confirms it is running
+- Hold `⌘` and drag less-used icons to the other side of the notch to free up space
+- Use [Ice](https://github.com/jordanbaird/Ice) (free, open source) or [Bartender](https://www.macbartender.com) (paid) to reveal and manage hidden menu bar icons
 
 **macOS blocked the app (Gatekeeper)**
-If you received a pre-built binary rather than building from source, right-click the app → Open → Open anyway. This is a one-time step.
+- Right-click the app → **Open** → **Open anyway** — this is a one-time step
 
 ---
 
@@ -142,9 +141,8 @@ rm -rf /Applications/Claude_Codex_Tracker.app
 | Data | `src/python/tracker_data.py` | Background daemon — fetches usage from APIs |
 | Shared state | `~/.cache/claude-codex-tracker/data.json` | Written by Python, read by Swift every 10s |
 
-**Auth:** Claude's API accepts cookie-authenticated requests directly. Codex requires a Bearer token, which the fetcher obtains from `chatgpt.com/api/auth/session` using your Chrome session.
-
-**Refresh intervals:** Every 5 minutes normally, every 1 minute when at the usage limit.
+- **Auth:** Claude's API accepts cookie-authenticated requests directly. Codex requires a Bearer token obtained from `chatgpt.com/api/auth/session` using your Chrome session.
+- **Refresh intervals:** Every 5 minutes normally, every 1 minute when at the usage limit.
 
 ---
 
