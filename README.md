@@ -1,5 +1,7 @@
 # Claude & Codex Tracker
 
+> **macOS only** — Requires macOS 13 (Ventura) or later on Apple Silicon (M1 or later). Not compatible with Windows, Linux, or Intel Macs.
+
 A macOS menu bar app that shows your real-time usage for **Claude** (Anthropic) and **Codex** (OpenAI) — session limits, weekly limits, reset countdowns, and threshold warnings.
 
 Runs silently in the background. No Dock icon. Just a menu bar item you click when you need it.
