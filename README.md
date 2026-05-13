@@ -34,8 +34,8 @@ The colored dots in the menu bar and the dial colors follow the same scale:
 | Red (solid) | Capped — limit reached | 100% used |
 
 The menu bar shows four dots: `CL ●●  CO ●●`
-- `CL` = Claude · first dot = current session (5h window) · second dot = weekly
-- `CO` = Codex · first dot = current session · second dot = weekly
+- `CL` = Claude · first dot = current usage (5h window) · second dot = weekly
+- `CO` = Codex · first dot = current usage (5h window) · second dot = weekly
 
 A warning banner also appears inside the menu when any metric crosses 80%.
 
