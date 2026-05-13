@@ -22,11 +22,31 @@ Runs silently in the background. No Dock icon. Just a menu bar item you click wh
 
 ---
 
+## Color indicators
+
+The colored dots in the menu bar and the dial colors follow the same scale:
+
+| Color | Meaning | Threshold |
+|---|---|---|
+| Green | Healthy — plenty of headroom | 0–49% used |
+| Amber | Watch — usage climbing | 50–79% used |
+| Red | Critical — approaching limit | 80–99% used |
+| Red (solid) | Capped — limit reached | 100% used |
+
+The menu bar shows four dots: `CL ●●  CO ●●`
+- `CL` = Claude · first dot = current session (5h window) · second dot = weekly
+- `CO` = Codex · first dot = current session · second dot = weekly
+
+A warning banner also appears inside the menu when any metric crosses 80%.
+
+---
+
 ## Prerequisites
 
 | Requirement | Notes |
 |---|---|
 | macOS 13 or later | Uses Cocoa menu bar and launchctl |
+| Apple Silicon Mac (M1 or later) | Build targets `arm64` — Intel Macs are not supported |
 | Google Chrome | Must be logged in to `claude.ai` and `chatgpt.com` |
 | Python 3 | `python3` must be available in PATH |
 | Xcode Command Line Tools | For compiling the Swift binary |
@@ -69,10 +89,13 @@ If you see an error or dashes instead of numbers, make sure you are logged in to
 |---|---|
 | View usage | Click the menu bar icon |
 | Switch used ↔ remaining % | Click **Show Remaining %** or press `⌘M` |
+| See reset time per dot | Hover over any colored dot in the menu bar |
 | Open Claude usage page | Click **Open Claude Analytics** |
 | Open Codex usage page | Click **Open Codex Analytics** |
 | Force a refresh | Click **Refresh now** |
 | Quit | Click **Quit** |
+
+> **Tip:** Hovering over each dot in the menu bar shows a tooltip with the metric name, current percentage, and time until reset — without opening the full menu.
 
 ---
 
@@ -121,3 +144,9 @@ rm -rf /Applications/Claude_Codex_Tracker.app
 ## Privacy
 
 This app reads Chrome cookies for `claude.ai` and `chatgpt.com` only. All data stays on your machine — nothing is sent anywhere other than the official Claude and Codex usage APIs.
+
+---
+
+## License
+
+MIT © Sakthivel Ramasamy
