@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Claude &amp; Codex Tracker</title>
 <style>
   :root {
@@ -23,7 +25,7 @@
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
     font-size: 14px;
     min-height: 100dvh;
-    padding: 40px 12px 32px;
+    padding: max(40px, calc(env(safe-area-inset-top) + 20px)) 12px max(32px, calc(env(safe-area-inset-bottom) + 16px));
   }
   header {
     display: flex;
