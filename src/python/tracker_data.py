@@ -157,6 +157,8 @@ def default_block(status):
         "weekly_remaining_pct": None,
         "session_remaining_pct": None,
         "credits_balance": "—",
+        "design_weekly_pct": "—",
+        "design_weekly_reset": "—",
         "last_updated": now_str(),
     }
 
@@ -310,9 +312,11 @@ def fetch_claude_usage(consecutive_failures):
         org_data = org_resp.json() if org_resp.status_code == 200 else {}
         session_window = data.get("five_hour", {}) or {}
         weekly_window = data.get("seven_day", {}) or {}
+        design_window = data.get("seven_day_omelette", {}) or {}
 
         session_used = safe_int(session_window.get("utilization"), 0)
         weekly_used = safe_int(weekly_window.get("utilization"), 0)
+        design_used = safe_int(design_window.get("utilization"), 0) if design_window else None
         session_remaining = max(0, 100 - session_used)
         weekly_remaining = max(0, 100 - weekly_used)
 
@@ -328,6 +332,8 @@ def fetch_claude_usage(consecutive_failures):
             "session_remaining_pct": session_remaining,
             "weekly_remaining_pct": weekly_remaining,
             "credits_balance": "—",
+            "design_weekly_pct": percent_str(design_used) if design_used is not None else "—",
+            "design_weekly_reset": format_reset_iso(design_window.get("resets_at", "")) if design_window else "—",
             "last_updated": now_str(),
         }
         at_limit = session_used >= 100 or weekly_used >= 100

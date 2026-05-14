@@ -222,31 +222,50 @@ final class DialPairMenuRowView: NSView {
     var rightWarning:  Bool    = false { didSet { needsDisplay = true } }
     var rightGlow:     CGFloat = 1.0   { didSet { needsDisplay = true } }
 
-    private let drawRadius:  CGFloat = 32.5  // dialDiameter/2 − fillWidth/2 = 36 − 3.5
-    private let trackWidth:  CGFloat = 5.0
-    private let fillWidth:   CGFloat = 7.0
+    var showThird:    Bool    = false { didSet { needsDisplay = true } }
+    var showDivider:  Bool    = false { didSet { needsDisplay = true } }
+
+    var thirdFraction: CGFloat = 0.0   { didSet { needsDisplay = true } }
+    var thirdColor:    NSColor = .systemGreen { didSet { needsDisplay = true } }
+    var thirdPct:      String  = "—"   { didSet { needsDisplay = true } }
+    var thirdLabel:    String  = "Design" { didSet { needsDisplay = true } }
+    var thirdReset:    String  = "—"   { didSet { needsDisplay = true } }
+    var thirdWarning:  Bool    = false { didSet { needsDisplay = true } }
+    var thirdGlow:     CGFloat = 1.0   { didSet { needsDisplay = true } }
+
+    private var drawRadius:  CGFloat { showThird ? 22.0 : 32.5 }
+    private var trackWidth:  CGFloat { showThird ? 4.0  : 5.0  }
+    private var fillWidth:   CGFloat { showThird ? 5.5  : 7.0  }
+    private var dialCenterY: CGFloat { showThird ? 50.0 : 58.0 }
     private let startAngle:  CGFloat = 225.0
     private let totalSweep:  CGFloat = 270.0
-    private let dialCenterY: CGFloat = 58.0
 
     private let trackCol = NSColor(calibratedRed: 0.29, green: 0.32, blue: 0.31, alpha: 0.55)
     private let dimCol   = NSColor(calibratedRed: 0.70, green: 0.73, blue: 0.78, alpha: 1.0)
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        let lx = bounds.width * 0.27
-        let rx = bounds.width * 0.73
+        let lx = bounds.width * (showThird ? 0.167 : 0.27)
+        let mx = bounds.width * (showThird ? 0.500 : 0.73)
         drawDial(cx: lx, fraction: leftFraction,  color: leftColor,
                  pct: leftPct,   label: leftLabel,   reset: leftReset,
                  warning: leftWarning,  glow: leftGlow)
-        drawDial(cx: rx, fraction: rightFraction, color: rightColor,
+        drawDial(cx: mx, fraction: rightFraction, color: rightColor,
                  pct: rightPct,  label: rightLabel,  reset: rightReset,
-                 warning: rightWarning, glow: rightGlow)
+                 warning: rightWarning, glow: rightGlow, skipReset: showThird)
+        if showThird {
+            let rx = bounds.width * 0.833
+            drawDial(cx: rx, fraction: thirdFraction, color: thirdColor,
+                     pct: thirdPct, label: thirdLabel, reset: thirdReset,
+                     warning: thirdWarning, glow: thirdGlow, skipReset: true)
+            if showDivider { drawVerticalDivider() }
+            drawSharedReset(cx: (mx + rx) / 2, text: rightReset)
+        }
     }
 
     private func drawDial(cx: CGFloat, fraction: CGFloat, color: NSColor,
                           pct: String, label: String, reset: String,
-                          warning: Bool, glow: CGFloat) {
+                          warning: Bool, glow: CGFloat, skipReset: Bool = false) {
         let center = CGPoint(x: cx, y: dialCenterY)
         let clamp  = min(max(fraction, 0), 1)
 
@@ -284,7 +303,7 @@ final class DialPairMenuRowView: NSView {
         }
 
         // Centre percentage
-        let pctFont  = NSFont.monospacedDigitSystemFont(ofSize: 16, weight: .bold)
+        let pctFont  = NSFont.monospacedDigitSystemFont(ofSize: showThird ? 13 : 16, weight: .bold)
         let pctColor = clamp > 0 ? (color.blended(withFraction: 0.40, of: .white) ?? color) : dimCol.withAlphaComponent(0.50)
         let pctAttrs: [NSAttributedString.Key: Any] = [.foregroundColor: pctColor, .font: pctFont]
         let pctStr   = pct as NSString
@@ -318,16 +337,41 @@ final class DialPairMenuRowView: NSView {
                     withAttributes: lblAttrs)
 
         // Reset line below arc
-        let rstAttrs: [NSAttributedString.Key: Any] = [
+        if !skipReset {
+            let rstAttrs: [NSAttributedString.Key: Any] = [
+                .foregroundColor: NSColor(calibratedWhite: 0.78, alpha: 1.0),
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
+            ]
+            let rstStr  = reset as NSString
+            let rstSize = rstStr.size(withAttributes: rstAttrs)
+            let arcBot  = center.y - drawRadius - trackWidth / 2
+            rstStr.draw(at: CGPoint(x: center.x - rstSize.width / 2,
+                                    y: arcBot - rstSize.height - 4),
+                        withAttributes: rstAttrs)
+        }
+    }
+
+    private func drawSharedReset(cx: CGFloat, text: String) {
+        let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: NSColor(calibratedWhite: 0.78, alpha: 1.0),
             .font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
         ]
-        let rstStr  = reset as NSString
-        let rstSize = rstStr.size(withAttributes: rstAttrs)
-        let arcBot  = center.y - drawRadius - trackWidth / 2
-        rstStr.draw(at: CGPoint(x: center.x - rstSize.width / 2,
-                                y: arcBot - rstSize.height - 4),
-                    withAttributes: rstAttrs)
+        let str  = text as NSString
+        let size = str.size(withAttributes: attrs)
+        let arcBot = dialCenterY - drawRadius - trackWidth / 2
+        str.draw(at: CGPoint(x: cx - size.width / 2, y: arcBot - size.height - 4),
+                 withAttributes: attrs)
+    }
+
+    private func drawVerticalDivider() {
+        let x = bounds.width * 0.333
+        let halfH = drawRadius + trackWidth * 1.8
+        let path = NSBezierPath()
+        path.move(to: CGPoint(x: x, y: dialCenterY - halfH))
+        path.line(to: CGPoint(x: x, y: dialCenterY + halfH))
+        path.lineWidth = 1.0
+        NSColor(calibratedWhite: 1.0, alpha: 0.18).setStroke()
+        path.stroke()
     }
 }
 
@@ -769,8 +813,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         return (item, bar)
     }
 
-    func makeDialPairRow(hoverGroup: String? = nil) -> (NSMenuItem, DialPairMenuRowView) {
-        let height: CGFloat = 110
+    func makeDialPairRow(height: CGFloat = 110, hoverGroup: String? = nil) -> (NSMenuItem, DialPairMenuRowView) {
         let container = NSView(frame: NSRect(x: 0, y: 0, width: rowWidth, height: height))
         container.wantsLayer = true
         let rowBG = subBoxColor(for: hoverGroup)
@@ -891,9 +934,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         appMenu.addItem(clh)
         appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "claude"))
 
-        let (cdi, cdv) = makeDialPairRow(hoverGroup: "claude")
+        let (cdi, cdv) = makeDialPairRow(height: 100, hoverGroup: "claude")
         claudeDialItem = cdi
         claudeDialView = cdv
+        cdv.showThird   = true
+        cdv.showDivider = true
         appMenu.addItem(cdi)
         appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "claude"))
 
@@ -2243,8 +2288,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let claude = usageBlock(from: payload, key: "claude", fallbackToRoot: true)
         let codex = usageBlock(from: payload, key: "codex")
 
-        let cSReset = stringValue(claude["session_reset"])
-        let cWReset = stringValue(claude["weekly_reset"])
+        let cSReset  = stringValue(claude["session_reset"])
+        let cWReset  = stringValue(claude["weekly_reset"])
+        let cDWPct   = stringValue(claude["design_weekly_pct"])
         let cPlanRaw = stringValue(claude["plan_label"], fallback: "PRO")
         let cStatus = stringValue(claude["status"])
 
@@ -2320,10 +2366,21 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         claudeDialView.rightFraction = CGFloat(pctInt(cWView) ?? 0) / 100.0
         claudeDialView.rightColor    = barColorForValue(cWView, isRemaining: showRemaining)
         claudeDialView.rightPct      = cWView
-        claudeDialView.rightLabel    = "Weekly"
+        claudeDialView.rightLabel    = "All Models"
         claudeDialView.rightWarning  = isCriticalState(cWView, isRemaining: showRemaining)
         claudeDialView.rightGlow     = claudeWeeklyCapped ? 0.20 : 1.0
         claudeDialView.rightReset    = weeklyCountdownPhrase(cWReset) + " · " + weeklyClockPhrase(cWReset)
+
+        // Design Weekly (seven_day_omelette)
+        let cDWView = showRemaining
+            ? (cDWPct == "—" ? "—" : "\(max(0, 100 - (pctInt(cDWPct) ?? 0)))%")
+            : cDWPct
+        claudeDialView.thirdFraction = CGFloat(pctInt(cDWView) ?? 0) / 100.0
+        claudeDialView.thirdColor    = barColorForValue(cDWView, isRemaining: showRemaining)
+        claudeDialView.thirdPct      = cDWView
+        claudeDialView.thirdLabel    = "Design"
+        claudeDialView.thirdWarning  = isCriticalState(cDWView, isRemaining: showRemaining)
+        claudeDialView.thirdGlow     = cDWView == "—" ? 0.0 : 1.0
 
         codexDialView.leftFraction   = CGFloat(pctInt(oSEffectiveView) ?? 0) / 100.0
         codexDialView.leftColor      = barColorForValue(oSEffectiveView, isRemaining: showRemaining)
