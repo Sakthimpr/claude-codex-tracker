@@ -342,8 +342,8 @@ final class DialPairMenuRowView: NSView {
                     withAttributes: lblAttrs)
         if !sublabel.isEmpty {
             let subAttrs: [NSAttributedString.Key: Any] = [
-                .foregroundColor: NSColor(calibratedWhite: 0.65, alpha: 1.0),
-                .font: NSFont.systemFont(ofSize: 9, weight: .regular)
+                .foregroundColor: NSColor(calibratedWhite: 0.82, alpha: 1.0),
+                .font: NSFont.systemFont(ofSize: 10, weight: .medium)
             ]
             let subStr  = sublabel as NSString
             let subSize = subStr.size(withAttributes: subAttrs)
@@ -2442,7 +2442,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         codexDialView.rightColor     = barColorForValue(oWView, isRemaining: showRemaining)
         codexDialView.rightPct       = oWView
         codexDialView.rightLabel     = "Weekly"
-        codexDialView.rightSublabel  = "weekly"
         codexDialView.rightWarning   = isCriticalState(oWView, isRemaining: showRemaining)
         codexDialView.rightGlow      = codexWeeklyCapped ? 0.20 : 1.0
         codexDialView.rightReset     = weeklyCountdownPhrase(oWReset) + " · " + weeklyClockPhrase(oWReset)
