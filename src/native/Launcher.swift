@@ -339,7 +339,7 @@ final class DialPairMenuRowView: NSView {
         // Reset line below arc
         if !skipReset {
             let rstAttrs: [NSAttributedString.Key: Any] = [
-                .foregroundColor: NSColor(calibratedWhite: 0.78, alpha: 1.0),
+                .foregroundColor: NSColor(calibratedWhite: 0.92, alpha: 1.0),
                 .font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
             ]
             let rstStr  = reset as NSString
@@ -353,7 +353,7 @@ final class DialPairMenuRowView: NSView {
 
     private func drawSharedReset(cx: CGFloat, text: String) {
         let attrs: [NSAttributedString.Key: Any] = [
-            .foregroundColor: NSColor(calibratedWhite: 0.78, alpha: 1.0),
+            .foregroundColor: NSColor(calibratedWhite: 0.92, alpha: 1.0),
             .font: NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
         ]
         let str  = text as NSString
@@ -592,6 +592,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     var lastDataMTime: Date?
     var claudeSessionDotTipView: StatusDotTooltipView?
     var claudeWeeklyDotTipView: StatusDotTooltipView?
+    var claudeDesignDotTipView: StatusDotTooltipView?
     var codexSessionDotTipView: StatusDotTooltipView?
     var codexWeeklyDotTipView: StatusDotTooltipView?
     var statusDotPopover: NSPopover?
@@ -1246,7 +1247,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     func buildStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let btn = statusItem.button {
-            btn.title = "CL⚪ CO⚪⚪"
+            btn.title = "CL⚪⚪⚪ CO⚪⚪"
             btn.toolTip = nil
             // Use a smaller proportional font so CL/CO letters are visually narrower than monospaced glyphs.
             btn.font = NSFont.systemFont(ofSize: 11, weight: .regular)
@@ -1273,6 +1274,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
             v.hoverDelegate = self
             button.addSubview(v)
             claudeWeeklyDotTipView = v
+        }
+        if claudeDesignDotTipView == nil {
+            let v = StatusDotTooltipView(frame: .zero)
+            v.metricKey = "cl_design"
+            v.hoverDelegate = self
+            button.addSubview(v)
+            claudeDesignDotTipView = v
         }
         if codexSessionDotTipView == nil {
             let v = StatusDotTooltipView(frame: .zero)
@@ -1305,6 +1313,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         cl5hRow.frame  = NSRect(x: startX, y: 11, width: rowW, height: rowH)
         let clWRow   = StatusTooltipRowView(accentColor: usageGreen)
         clWRow.frame   = NSRect(x: startX, y: 11, width: rowW, height: rowH)
+        let clDesignRow = StatusTooltipRowView(accentColor: usageGreen)
+        clDesignRow.frame = NSRect(x: startX, y: 11, width: rowW, height: rowH)
         let co5hRow  = StatusTooltipRowView(accentColor: usageGreen)
         co5hRow.frame  = NSRect(x: startX, y: 11, width: rowW, height: rowH)
         let coWRow   = StatusTooltipRowView(accentColor: usageGreen)
@@ -1312,11 +1322,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
         content.addSubview(cl5hRow)
         content.addSubview(clWRow)
+        content.addSubview(clDesignRow)
         content.addSubview(co5hRow)
         content.addSubview(coWRow)
 
         statusDotRows["cl_5h"]     = cl5hRow
         statusDotRows["cl_weekly"] = clWRow
+        statusDotRows["cl_design"] = clDesignRow
         statusDotRows["co_5h"]     = co5hRow
         statusDotRows["co_weekly"] = coWRow
 
@@ -1334,7 +1346,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
     func refreshStatusDotPopoverRows() {
         let activeKey = activeStatusDotKey
-        let ordered: [String] = ["cl_5h", "cl_weekly", "co_5h", "co_weekly"]
+        let ordered: [String] = ["cl_5h", "cl_weekly", "cl_design", "co_5h", "co_weekly"]
         for key in ordered {
             guard let row = statusDotRows[key] else { continue }
             if let color = statusDotColors[key] { row.accentColor = color }
@@ -1408,6 +1420,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let dotViews: [(String, StatusDotTooltipView?)] = [
             ("cl_5h",     claudeSessionDotTipView),
             ("cl_weekly", claudeWeeklyDotTipView),
+            ("cl_design", claudeDesignDotTipView),
             ("co_5h",     codexSessionDotTipView),
             ("co_weekly", codexWeeklyDotTipView),
         ]
@@ -1435,9 +1448,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     func updateStatusDotTooltips(
         claudeSessionValue: String, claudeSessionReset: String,
         claudeWeeklyValue: String,  claudeWeeklyReset: String,
+        claudeDesignValue: String,  claudeDesignReset: String,
         codexSessionValue: String,  codexSessionReset: String,
         codexWeeklyValue: String,   codexWeeklyReset: String,
-        cSDot: String, cWDot: String, oSDot: String, oWDot: String
+        cSDot: String, cWDot: String, cDWDot: String, oSDot: String, oWDot: String
     ) {
         guard let button = statusItem.button else { return }
         ensureStatusDotTooltipViews(on: button)
@@ -1446,41 +1460,47 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
             let r = reset.trimmingCharacters(in: .whitespacesAndNewlines)
             return r.isEmpty ? "\(label) · \(val)" : "\(label) · \(val) · ↻ \(r)"
         }
-        statusDotTexts["cl_5h"]     = tip("Claude Current", claudeSessionValue, shortCountdown(claudeSessionReset))
-        statusDotTexts["cl_weekly"] = tip("Claude Weekly",  claudeWeeklyValue,  weeklyClockPhrase(claudeWeeklyReset))
-        statusDotTexts["co_5h"]     = tip("Codex Current",  codexSessionValue,  shortCountdown(codexSessionReset))
-        statusDotTexts["co_weekly"] = tip("Codex Weekly",   codexWeeklyValue,   weeklyClockPhrase(codexWeeklyReset))
+        statusDotTexts["cl_5h"]     = tip("Claude Current",    claudeSessionValue, shortCountdown(claudeSessionReset))
+        statusDotTexts["cl_weekly"] = tip("Claude All Models",  claudeWeeklyValue,  weeklyClockPhrase(claudeWeeklyReset))
+        statusDotTexts["cl_design"] = tip("Claude Design",      claudeDesignValue,  weeklyClockPhrase(claudeDesignReset))
+        statusDotTexts["co_5h"]     = tip("Codex Current",      codexSessionValue,  shortCountdown(codexSessionReset))
+        statusDotTexts["co_weekly"] = tip("Codex Weekly",       codexWeeklyValue,   weeklyClockPhrase(codexWeeklyReset))
         statusDotColors["cl_5h"]     = barColorForValue(claudeSessionValue, isRemaining: showRemaining)
         statusDotColors["cl_weekly"] = barColorForValue(claudeWeeklyValue,  isRemaining: showRemaining)
+        statusDotColors["cl_design"] = barColorForValue(claudeDesignValue,  isRemaining: showRemaining)
         statusDotColors["co_5h"]     = barColorForValue(codexSessionValue,  isRemaining: showRemaining)
         statusDotColors["co_weekly"] = barColorForValue(codexWeeklyValue,   isRemaining: showRemaining)
         refreshStatusDotPopoverRows()
 
         let font = button.font ?? NSFont.systemFont(ofSize: 11, weight: .regular)
-        let full = "CL\(cSDot)\(cWDot) CO\(oSDot)\(oWDot)"
+        let full = "CL\(cSDot)\(cWDot)\(cDWDot) CO\(oSDot)\(oWDot)"
         let totalW = statusTitleWidth(full, font: font)
         let startX = max(0, floor((button.bounds.width - totalW) / 2.0))
         let fullHeight = button.bounds.height
 
-        let cSStart = startX + statusTitleWidth("CL", font: font)
-        let cSWidth = statusTitleWidth(cSDot, font: font)
-        let cWStart = startX + statusTitleWidth("CL\(cSDot)", font: font)
-        let cWWidth = statusTitleWidth(cWDot, font: font)
-        let oSStart = startX + statusTitleWidth("CL\(cSDot)\(cWDot) CO", font: font)
-        let oSWidth = statusTitleWidth(oSDot, font: font)
-        let oWStart = startX + statusTitleWidth("CL\(cSDot)\(cWDot) CO\(oSDot)", font: font)
-        let oWWidth = statusTitleWidth(oWDot, font: font)
+        let cSStart  = startX + statusTitleWidth("CL", font: font)
+        let cSWidth  = statusTitleWidth(cSDot, font: font)
+        let cWStart  = startX + statusTitleWidth("CL\(cSDot)", font: font)
+        let cWWidth  = statusTitleWidth(cWDot, font: font)
+        let cDWStart = startX + statusTitleWidth("CL\(cSDot)\(cWDot)", font: font)
+        let cDWWidth = statusTitleWidth(cDWDot, font: font)
+        let oSStart  = startX + statusTitleWidth("CL\(cSDot)\(cWDot)\(cDWDot) CO", font: font)
+        let oSWidth  = statusTitleWidth(oSDot, font: font)
+        let oWStart  = startX + statusTitleWidth("CL\(cSDot)\(cWDot)\(cDWDot) CO\(oSDot)", font: font)
+        let oWWidth  = statusTitleWidth(oWDot, font: font)
 
         let minHitW: CGFloat = 14
         let pad: CGFloat = 4
-        claudeSessionDotTipView?.frame = NSRect(x: cSStart - pad, y: 0, width: max(minHitW, cSWidth + pad * 2), height: fullHeight)
-        claudeWeeklyDotTipView?.frame  = NSRect(x: cWStart - pad, y: 0, width: max(minHitW, cWWidth + pad * 2), height: fullHeight)
-        codexSessionDotTipView?.frame  = NSRect(x: oSStart - pad, y: 0, width: max(minHitW, oSWidth + pad * 2), height: fullHeight)
-        codexWeeklyDotTipView?.frame   = NSRect(x: oWStart - pad, y: 0, width: max(minHitW, oWWidth + pad * 2), height: fullHeight)
+        claudeSessionDotTipView?.frame = NSRect(x: cSStart  - pad, y: 0, width: max(minHitW, cSWidth  + pad * 2), height: fullHeight)
+        claudeWeeklyDotTipView?.frame  = NSRect(x: cWStart  - pad, y: 0, width: max(minHitW, cWWidth  + pad * 2), height: fullHeight)
+        claudeDesignDotTipView?.frame  = NSRect(x: cDWStart - pad, y: 0, width: max(minHitW, cDWWidth + pad * 2), height: fullHeight)
+        codexSessionDotTipView?.frame  = NSRect(x: oSStart  - pad, y: 0, width: max(minHitW, oSWidth  + pad * 2), height: fullHeight)
+        codexWeeklyDotTipView?.frame   = NSRect(x: oWStart  - pad, y: 0, width: max(minHitW, oWWidth  + pad * 2), height: fullHeight)
         claudeSessionDotTipView?.toolTip = nil
-        claudeWeeklyDotTipView?.toolTip = nil
-        codexSessionDotTipView?.toolTip = nil
-        codexWeeklyDotTipView?.toolTip  = nil
+        claudeWeeklyDotTipView?.toolTip  = nil
+        claudeDesignDotTipView?.toolTip  = nil
+        codexSessionDotTipView?.toolTip  = nil
+        codexWeeklyDotTipView?.toolTip   = nil
     }
 
     func launchPython() {
@@ -2206,7 +2226,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         // "updated X:XX PM" — secondary but readable
         if let rightRange = attr.string.range(of: refreshText, options: .backwards) {
             let ns = NSRange(rightRange, in: attr.string)
-            attr.addAttribute(.foregroundColor, value: dimText.withAlphaComponent(0.82), range: ns)
+            attr.addAttribute(.foregroundColor, value: headerText.withAlphaComponent(0.92), range: ns)
             attr.addAttribute(.font, value: NSFont.monospacedDigitSystemFont(ofSize: 11.5, weight: .regular), range: ns)
         }
         lbHeader.attributedStringValue = attr
@@ -2306,10 +2326,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let oSession = usedRemainingPcts(from: codex, weekly: false)
         let oWeekly = usedRemainingPcts(from: codex, weekly: true)
 
-        let cSView = showRemaining ? cSession.remaining : cSession.used
-        let cWView = showRemaining ? cWeekly.remaining : cWeekly.used
-        let oSView = showRemaining ? oSession.remaining : oSession.used
-        let oWView = showRemaining ? oWeekly.remaining : oWeekly.used
+        let cSView  = showRemaining ? cSession.remaining : cSession.used
+        let cWView  = showRemaining ? cWeekly.remaining  : cWeekly.used
+        let cDWView = showRemaining
+            ? (cDWPct == "—" ? "—" : "\(max(0, 100 - (pctInt(cDWPct) ?? 0)))%")
+            : cDWPct
+        let oSView  = showRemaining ? oSession.remaining : oSession.used
+        let oWView  = showRemaining ? oWeekly.remaining  : oWeekly.used
 
         let claudeWeeklyCapped = isCappedState(cWView, isRemaining: showRemaining)
         let codexWeeklyCapped = isCappedState(oWView, isRemaining: showRemaining)
@@ -2318,23 +2341,26 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let cSEffectiveView = claudeWeeklyCapped ? (showRemaining ? "0%" : "100%") : cSView
         let oSEffectiveView = codexWeeklyCapped ? (showRemaining ? "0%" : "100%") : oSView
 
-        let cSDot = cSEffectiveView != "—" ? colorDotForValue(cSEffectiveView, isRemaining: showRemaining) : "⚪"
-        let cWDot = cWView != "—" ? colorDotForValue(cWView, isRemaining: showRemaining) : "⚪"
-        let oSDot = oSEffectiveView != "—" ? colorDotForValue(oSEffectiveView, isRemaining: showRemaining) : "⚪"
-        let oWDot = oWView != "—" ? colorDotForValue(oWView, isRemaining: showRemaining) : "⚪"
+        let cSDot  = cSEffectiveView != "—" ? colorDotForValue(cSEffectiveView, isRemaining: showRemaining) : "⚪"
+        let cWDot  = cWView  != "—" ? colorDotForValue(cWView,  isRemaining: showRemaining) : "⚪"
+        let cDWDot = cDWView != "—" ? colorDotForValue(cDWView, isRemaining: showRemaining) : "⚪"
+        let oSDot  = oSEffectiveView != "—" ? colorDotForValue(oSEffectiveView, isRemaining: showRemaining) : "⚪"
+        let oWDot  = oWView  != "—" ? colorDotForValue(oWView,  isRemaining: showRemaining) : "⚪"
 
         pulseOn.toggle()
         let isLive = (cStatus == "Live") || (oStatus == "Live")
-        statusItem.button?.title = "CL\(cSDot)\(cWDot) CO\(oSDot)\(oWDot)"
+        statusItem.button?.title = "CL\(cSDot)\(cWDot)\(cDWDot) CO\(oSDot)\(oWDot)"
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.updateStatusDotTooltips(
                 claudeSessionValue: cSEffectiveView, claudeSessionReset: cSReset,
                 claudeWeeklyValue:  cWView,           claudeWeeklyReset:  cWReset,
+                claudeDesignValue:  cDWView,           claudeDesignReset:  cWReset,
                 codexSessionValue:  oSEffectiveView,  codexSessionReset:  oSReset,
                 codexWeeklyValue:   oWView,            codexWeeklyReset:   oWReset,
                 cSDot: cSDot,
                 cWDot: cWDot,
+                cDWDot: cDWDot,
                 oSDot: oSDot,
                 oWDot: oWDot
             )
@@ -2372,9 +2398,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         claudeDialView.rightReset    = weeklyCountdownPhrase(cWReset) + " · " + weeklyClockPhrase(cWReset)
 
         // Design Weekly (seven_day_omelette)
-        let cDWView = showRemaining
-            ? (cDWPct == "—" ? "—" : "\(max(0, 100 - (pctInt(cDWPct) ?? 0)))%")
-            : cDWPct
         claudeDialView.thirdFraction = CGFloat(pctInt(cDWView) ?? 0) / 100.0
         claudeDialView.thirdColor    = barColorForValue(cDWView, isRemaining: showRemaining)
         claudeDialView.thirdPct      = cDWView
