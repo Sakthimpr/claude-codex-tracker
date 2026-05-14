@@ -2390,7 +2390,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let refreshedClock = compactClock(updated).trimmingCharacters(in: .whitespacesAndNewlines)
         let refreshText = "↻ " + headerClockDisplay(refreshedClock)
         let maxUsed = [cSEffectiveView, cWView, cDWView, oSEffectiveView, oWView].compactMap { pctInt($0) }.map { showRemaining ? (100 - $0) : $0 }.max() ?? 0
-        let worstDotColor: NSColor = maxUsed >= 80 ? usageCriticalRed : maxUsed >= 50 ? usageHealthyGold : NSColor(calibratedRed: 0.58, green: 0.90, blue: 0.62, alpha: 1.0)
+        let worstDotColor: NSColor = maxUsed >= 100 ? usageCriticalRed : maxUsed >= 50 ? usageHealthyGold : NSColor(calibratedRed: 0.58, green: 0.90, blue: 0.62, alpha: 1.0)
         setHeaderLabel(dot: dot, isLive: isLive, title: "Claude & Codex — Usage", refreshText: refreshText, dotColor: worstDotColor)
         let claudeCapped = isCappedState(cSEffectiveView, isRemaining: showRemaining)
         let codexCapped = isCappedState(oSEffectiveView, isRemaining: showRemaining)
