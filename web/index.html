@@ -376,12 +376,15 @@ function render(d) {
 
 async function loadData() {
   const errEl = document.getElementById('error-msg');
+  const btn   = document.querySelector('.refresh-btn');
   errEl.style.display = 'none';
+  if (btn) { btn.textContent = 'Refreshing…'; btn.disabled = true; }
   try {
     const url   = window.SUPABASE_URL  + '/rest/v1/tracker_snapshot?id=eq.1&select=data';
     const key   = window.SUPABASE_ANON_KEY;
     const resp  = await fetch(url, {
-      headers: { 'apikey': key, 'Authorization': 'Bearer ' + key }
+      headers: { 'apikey': key, 'Authorization': 'Bearer ' + key },
+      cache: 'no-store'
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const rows  = await resp.json();
@@ -391,6 +394,8 @@ async function loadData() {
   } catch (e) {
     errEl.textContent = e.message;
     errEl.style.display = 'block';
+  } finally {
+    if (btn) { btn.textContent = 'Refresh now'; btn.disabled = false; }
   }
 }
 
