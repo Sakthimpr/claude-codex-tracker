@@ -355,10 +355,10 @@ function render(d) {
   document.getElementById('cx-current-pct').textContent  = x.session_pct   || '—';
   document.getElementById('cx-weekly-pct').textContent   = x.weekly_pct    || '—';
 
-  document.getElementById('cd-current-reset').textContent  = c.session_reset || '';
-  document.getElementById('claude-weekly-reset').textContent = c.weekly_reset || '';
-  document.getElementById('cx-current-reset').textContent  = x.session_reset || '';
-  document.getElementById('cx-weekly-reset').textContent   = x.weekly_reset  || '';
+  document.getElementById('cd-current-reset').textContent  = (c.session_reset || '').replace('Resets', '↻');
+  document.getElementById('claude-weekly-reset').textContent = (c.weekly_reset || '').replace('Resets', '↻');
+  document.getElementById('cx-current-reset').textContent  = (x.session_reset || '').replace('Resets', '↻');
+  document.getElementById('cx-weekly-reset').textContent   = (x.weekly_reset  || '').replace('Resets', '↻');
 
   setDot('cd-current-dot', cSPct);
   setDot('cx-current-dot', xSPct);
