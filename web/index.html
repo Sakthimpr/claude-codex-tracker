@@ -182,10 +182,6 @@
       <svg width="72" height="72" viewBox="0 0 72 72"></svg>
       <div class="dial-pct" id="cd-current-pct">—</div>
       <div class="dial-label">Current</div>
-      <div class="status-row">
-        <span class="status-dot" id="cd-current-dot"></span>
-        <span id="cd-current-reset"></span>
-      </div>
     </div>
     <div class="dial-wrap" id="cd-allmodels">
       <svg width="72" height="72" viewBox="0 0 72 72"></svg>
@@ -198,7 +194,13 @@
       <div class="dial-label">Design</div>
     </div>
   </div>
-  <div style="font-size:10px; color:rgba(232,232,236,0.88); margin-top:6px; text-align:center;" id="claude-weekly-reset"></div>
+  <div style="display:flex; align-items:center; margin-top:10px;">
+    <div style="flex:1; display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted);">
+      <span class="status-dot" id="cd-current-dot"></span>
+      <span id="cd-current-reset"></span>
+    </div>
+    <div style="flex:2; text-align:center; font-size:10px; color:rgba(232,232,236,0.88);" id="claude-weekly-reset"></div>
+  </div>
   <div class="warning-banner" id="claude-warning"></div>
 </div>
 
@@ -378,25 +380,8 @@ async function loadData() {
   }
 }
 
-function alignWeeklyReset() {
-  const am = document.getElementById('cd-allmodels');
-  const des = document.getElementById('cd-design');
-  const el = document.getElementById('claude-weekly-reset');
-  const card = document.getElementById('claude-card');
-  if (!am || !des || !el || !card) return;
-  const cardRect = card.getBoundingClientRect();
-  const amRect  = am.getBoundingClientRect();
-  const desRect = des.getBoundingClientRect();
-  const leftPx  = amRect.left  - cardRect.left;
-  const rightPx = cardRect.right - desRect.right;
-  el.style.marginLeft  = leftPx  + 'px';
-  el.style.marginRight = rightPx + 'px';
-}
-
 loadData();
 setInterval(loadData, 60000);
-window.addEventListener('load', alignWeeklyReset);
-window.addEventListener('resize', alignWeeklyReset);
 </script>
 </body>
 </html>
