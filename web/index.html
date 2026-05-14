@@ -44,8 +44,8 @@
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 16px 12px 18px;
-    margin-bottom: 14px;
+    padding: 20px 16px 22px;
+    margin-bottom: 16px;
   }
   .card-header {
     display: flex;
@@ -54,14 +54,14 @@
     margin-bottom: 14px;
   }
   .card-title {
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.8px;
     text-transform: uppercase;
     color: #e8e8ec;
   }
   .plan-badge {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.8px;
     padding: 3px 8px;
@@ -95,14 +95,14 @@
     overflow: visible;
   }
   .dial-label {
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 500;
     color: var(--muted);
     margin-top: 4px;
     text-align: center;
   }
   .dial-pct {
-    font-size: 14px;
+    font-size: 20px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     text-align: center;
@@ -120,7 +120,7 @@
     align-items: center;
     gap: 6px;
     margin-top: 10px;
-    font-size: 11px;
+    font-size: 13px;
     color: var(--muted);
   }
   .status-dot {
@@ -179,27 +179,27 @@
   <div class="dials-row" id="claude-dials">
     <div class="divider"></div>
     <div class="dial-wrap" id="cd-current">
-      <svg width="72" height="72" viewBox="0 0 72 72"></svg>
+      <svg width="90" height="90" viewBox="0 0 90 90"></svg>
       <div class="dial-pct" id="cd-current-pct">—</div>
       <div class="dial-label">Current</div>
     </div>
     <div class="dial-wrap" id="cd-allmodels">
-      <svg width="72" height="72" viewBox="0 0 72 72"></svg>
+      <svg width="90" height="90" viewBox="0 0 90 90"></svg>
       <div class="dial-pct" id="cd-allmodels-pct">—</div>
       <div class="dial-label">All Models</div>
     </div>
     <div class="dial-wrap" id="cd-design">
-      <svg width="72" height="72" viewBox="0 0 72 72"></svg>
+      <svg width="90" height="90" viewBox="0 0 90 90"></svg>
       <div class="dial-pct" id="cd-design-pct">—</div>
       <div class="dial-label">Design</div>
     </div>
   </div>
   <div style="display:flex; align-items:center; margin-top:10px;">
-    <div style="flex:1; display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted);">
+    <div style="flex:1; display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted);">
       <span class="status-dot" id="cd-current-dot"></span>
       <span id="cd-current-reset"></span>
     </div>
-    <div style="flex:2; text-align:center; font-size:10px; color:rgba(232,232,236,0.88);" id="claude-weekly-reset"></div>
+    <div style="flex:2; text-align:center; font-size:12px; color:rgba(232,232,236,0.88);" id="claude-weekly-reset"></div>
   </div>
   <div class="warning-banner" id="claude-warning"></div>
 </div>
@@ -211,7 +211,7 @@
   </div>
   <div class="dials-row" id="codex-dials">
     <div class="dial-wrap" id="cx-current">
-      <svg width="90" height="90" viewBox="0 0 90 90"></svg>
+      <svg width="110" height="110" viewBox="0 0 110 110"></svg>
       <div class="dial-pct" id="cx-current-pct">—</div>
       <div class="dial-label">Current</div>
       <div class="status-row">
@@ -220,7 +220,7 @@
       </div>
     </div>
     <div class="dial-wrap" id="cx-weekly">
-      <svg width="90" height="90" viewBox="0 0 90 90"></svg>
+      <svg width="110" height="110" viewBox="0 0 110 110"></svg>
       <div class="dial-pct" id="cx-weekly-pct">—</div>
       <div class="dial-label">Weekly</div>
       <div class="status-row">
@@ -343,11 +343,11 @@ function render(d) {
   const xSPct = pctInt(x.session_pct);
   const xWPct = pctInt(x.weekly_pct);
 
-  drawDial(document.querySelector('#cd-current svg'),    cSPct, 72);
-  drawDial(document.querySelector('#cd-allmodels svg'),  cWPct, 72);
-  drawDial(document.querySelector('#cd-design svg'),     cDPct, 72);
-  drawDial(document.querySelector('#cx-current svg'),    xSPct, 90);
-  drawDial(document.querySelector('#cx-weekly svg'),     xWPct, 90);
+  drawDial(document.querySelector('#cd-current svg'),    cSPct, 90);
+  drawDial(document.querySelector('#cd-allmodels svg'),  cWPct, 90);
+  drawDial(document.querySelector('#cd-design svg'),     cDPct, 90);
+  drawDial(document.querySelector('#cx-current svg'),    xSPct, 110);
+  drawDial(document.querySelector('#cx-weekly svg'),     xWPct, 110);
 
   document.getElementById('cd-current-pct').textContent  = c.session_pct   || '—';
   document.getElementById('cd-allmodels-pct').textContent = c.weekly_pct    || '—';
