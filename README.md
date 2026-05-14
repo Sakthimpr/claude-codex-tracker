@@ -2,7 +2,7 @@
 
 > **macOS only** — Requires macOS 13 (Ventura) or later on Apple Silicon (M1 or later). Not compatible with Windows, Linux, or Intel Macs.
 
-A macOS menu bar app that shows your real-time usage for **Claude** (Anthropic) and **Codex** (OpenAI) — session limits, weekly limits, reset countdowns, and threshold warnings.
+A macOS menu bar app that shows your real-time usage for **Claude** (Anthropic) and **Codex** (OpenAI) — session limits, weekly limits (All Models and Design separately for Claude), reset countdowns, and threshold warnings.
 
 Runs silently in the background. No Dock icon. Just a menu bar item you click when you need it.
 
@@ -35,8 +35,8 @@ The colored dots in the menu bar and the dial colors follow the same scale:
 | Red | Critical — approaching limit | 80–99% used |
 | Red (solid) | Capped — limit reached | 100% used |
 
-The menu bar shows four dots: `CL ●●  CO ●●`
-- `CL` = Claude · first dot = current usage (5h window) · second dot = weekly
+The menu bar shows five dots: `CL ●●●  CO ●●`
+- `CL` = Claude · first dot = current usage (5h window) · second dot = weekly (All Models) · third dot = weekly (Design)
 - `CO` = Codex · first dot = current usage (5h window) · second dot = weekly
 
 A warning banner also appears inside the menu when any metric crosses 80%.
@@ -97,7 +97,7 @@ If you see an error or dashes instead of numbers, make sure you are logged in to
 | Force a refresh | Click **Refresh now** |
 | Quit | Click **Quit** |
 
-> **Tip:** Hovering over each dot in the menu bar shows a tooltip with the metric name, current percentage, and time until reset — without opening the full menu.
+> **Tip:** Hovering over each dot in the menu bar shows a tooltip with the metric name, current percentage, and time until reset — without opening the full menu. Claude has three dots (Current · All Models · Design); Codex has two (Current · Weekly).
 
 ---
 
