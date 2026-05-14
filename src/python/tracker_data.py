@@ -22,6 +22,7 @@ COOKIE_CACHE_TTL = 3600     # re-read browser cookies once per hour
 OUTPUT_FILE = os.path.expanduser("~/.cache/claude-codex-tracker/data.json")
 
 CLAUDE_ORGS_API = "https://claude.ai/api/organizations"
+SUPABASE_CONFIG_PATH = os.path.expanduser("~/.claude-tracker/supabase.json")
 CLAUDE_ORG_ID = os.getenv("CLAUDE_ORG_ID", "").strip()
 
 CHATGPT_SESSION_API = "https://chatgpt.com/api/auth/session"
@@ -420,6 +421,35 @@ def fetch_codex_usage(consecutive_failures):
         return default_block(f"Error: {str(e)[:60]}"), False, consecutive_failures + 1
 
 
+def push_to_supabase(payload):
+    try:
+        if not os.path.exists(SUPABASE_CONFIG_PATH):
+            return
+        with open(SUPABASE_CONFIG_PATH, encoding="utf-8") as f:
+            cfg = json.load(f)
+        url = cfg.get("url", "").rstrip("/")
+        key = cfg.get("anon_key", "")
+        if not url or not key:
+            return
+        endpoint = f"{url}/rest/v1/tracker_snapshot"
+        row = {"id": 1, "data": json.dumps(payload), "updated_at": datetime.now(timezone.utc).isoformat()}
+        resp = requests.post(
+            endpoint,
+            json=row,
+            headers={
+                "apikey": key,
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+                "Prefer": "resolution=merge-duplicates",
+            },
+            timeout=10,
+        )
+        if resp.status_code not in (200, 201):
+            pass  # silent fail — mobile is optional
+    except Exception:
+        pass
+
+
 def main():
     claude_block = default_block("Starting...")
     codex_block = default_block("Starting...")
@@ -432,7 +462,9 @@ def main():
         claude_block, claude_at_limit, claude_failures = fetch_claude_usage(claude_failures)
         codex_block, codex_at_limit, codex_failures = fetch_codex_usage(codex_failures)
 
-        write_data(**build_payload(claude_block, codex_block))
+        payload = build_payload(claude_block, codex_block)
+        write_data(**payload)
+        push_to_supabase(payload)
         time.sleep(REFRESH_AT_LIMIT if (claude_at_limit or codex_at_limit) else REFRESH_INTERVAL)
 
 

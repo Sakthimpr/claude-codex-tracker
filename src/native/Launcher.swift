@@ -364,8 +364,8 @@ final class DialPairMenuRowView: NSView {
     }
 
     private func drawVerticalDivider() {
-        let x = bounds.width * 0.333
-        let halfH = drawRadius + trackWidth * 1.8
+        let x = bounds.width * 0.360
+        let halfH = drawRadius + trackWidth * 4.5
         let path = NSBezierPath()
         path.move(to: CGPoint(x: x, y: dialCenterY - halfH))
         path.line(to: CGPoint(x: x, y: dialCenterY + halfH))
@@ -2220,7 +2220,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         // "— Usage" suffix — slightly dimmer but readable
         if !subTitle.isEmpty, let subRange = attr.string.range(of: subTitle) {
             let ns = NSRange(subRange, in: attr.string)
-            attr.addAttribute(.foregroundColor, value: headerText.withAlphaComponent(0.65), range: ns)
+            attr.addAttribute(.foregroundColor, value: headerText.withAlphaComponent(0.88), range: ns)
             attr.addAttribute(.font, value: NSFont.systemFont(ofSize: 12, weight: .regular), range: ns)
         }
         // "updated X:XX PM" — secondary but readable
