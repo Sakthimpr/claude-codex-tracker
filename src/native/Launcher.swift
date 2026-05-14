@@ -2441,7 +2441,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         codexDialView.rightFraction  = CGFloat(pctInt(oWView) ?? 0) / 100.0
         codexDialView.rightColor     = barColorForValue(oWView, isRemaining: showRemaining)
         codexDialView.rightPct       = oWView
-        codexDialView.rightLabel     = "Weekly"
+        codexDialView.rightLabel     = "All Tasks"
+        codexDialView.rightSublabel  = "weekly"
         codexDialView.rightWarning   = isCriticalState(oWView, isRemaining: showRemaining)
         codexDialView.rightGlow      = codexWeeklyCapped ? 0.20 : 1.0
         codexDialView.rightReset     = weeklyCountdownPhrase(oWReset) + " · " + weeklyClockPhrase(oWReset)
