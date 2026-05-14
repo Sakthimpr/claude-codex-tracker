@@ -245,7 +245,7 @@
       <div class="dial-wrap" id="cx-weekly">
         <svg width="110" height="110" viewBox="0 0 110 110"></svg>
         <div class="dial-pct" id="cx-weekly-pct">—</div>
-        <div class="dial-label">All Tasks<span class="dial-sublabel">weekly</span></div>
+        <div class="dial-label">Weekly<span class="dial-sublabel">weekly</span></div>
         <div class="status-row">
           <span class="status-dot" id="cx-weekly-dot"></span>
           <span id="cx-weekly-reset"></span>
@@ -401,7 +401,7 @@ function render(d) {
   checkWarning(document.getElementById('claude-warning'),
     {pct: cSPct, label: 'Session'}, {pct: cWPct, label: 'All Models'}, {pct: cDPct, label: 'Design'});
   checkWarning(document.getElementById('codex-warning'),
-    {pct: xSPct, label: 'Current'}, {pct: xWPct, label: 'All Tasks'});
+    {pct: xSPct, label: 'Current'}, {pct: xWPct, label: 'Weekly'});
 }
 
 async function loadData() {
