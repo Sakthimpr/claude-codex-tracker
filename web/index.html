@@ -49,8 +49,6 @@
     border-radius: 14px;
     padding: 20px 16px 22px;
     margin-bottom: 16px;
-    flex: 1;
-    min-height: 0;
     display: flex;
     flex-direction: column;
   }
@@ -78,10 +76,8 @@
     background: rgba(255,255,255,0.10);
   }
   .card-body {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
   }
   .dials-row {
     display: flex;
@@ -212,7 +208,7 @@
       </div>
     </div>
     <div style="display:flex; align-items:center; margin-top:10px;">
-      <div style="flex:1; display:flex; align-items:center; gap:6px; font-size:13px; color:var(--muted);">
+      <div style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; color:var(--muted);">
         <span class="status-dot" id="cd-current-dot"></span>
         <span id="cd-current-reset"></span>
       </div>
