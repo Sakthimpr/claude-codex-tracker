@@ -155,10 +155,13 @@
     margin-top: 10px;
     display: none;
   }
-  .refresh-btn {
-    display: block;
-    width: 100%;
+  .btn-row {
+    display: flex;
+    gap: 10px;
     margin-top: 20px;
+  }
+  .refresh-btn, .toggle-btn {
+    flex: 1;
     padding: 12px;
     background: rgba(255,255,255,0.06);
     border: 1px solid var(--border);
@@ -169,7 +172,12 @@
     cursor: pointer;
     text-align: center;
   }
-  .refresh-btn:active { background: rgba(255,255,255,0.12); }
+  .toggle-btn.active {
+    background: rgba(58,173,116,0.12);
+    border-color: rgba(58,173,116,0.35);
+    color: #3aad74;
+  }
+  .refresh-btn:active, .toggle-btn:active { background: rgba(255,255,255,0.12); }
   @media (display-mode: standalone) {
     body { padding-top: 70px; }
   }
@@ -256,7 +264,10 @@
   <div class="warning-banner" id="codex-warning"></div>
 </div>
 
-<button class="refresh-btn" onclick="window.location.reload()">Refresh now</button>
+<div class="btn-row">
+  <button class="refresh-btn" onclick="window.location.reload()">Refresh now</button>
+  <button class="toggle-btn" id="toggle-btn" onclick="toggleView()">Show Remaining %</button>
+</div>
 <div id="error-msg"></div>
 
 <script>
@@ -289,7 +300,7 @@ function describeArc(cx, cy, r, startDeg, endDeg) {
   return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
 }
 
-function drawDial(svgEl, pct, size) {
+function drawDial(svgEl, pct, size, colorPct) {
   svgEl.innerHTML = '';
   const cx = size / 2, cy = size / 2;
   const r = size * 0.38;
@@ -310,7 +321,7 @@ function drawDial(svgEl, pct, size) {
     const fill = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     fill.setAttribute('d', describeArc(cx, cy, r, startAngle, startAngle + sweep));
     fill.setAttribute('fill', 'none');
-    fill.setAttribute('stroke', dialColor(clampedPct));
+    fill.setAttribute('stroke', dialColor(colorPct !== undefined ? colorPct : clampedPct));
     fill.setAttribute('stroke-width', tw + 2);
     fill.setAttribute('stroke-linecap', 'round');
     svgEl.appendChild(fill);
@@ -356,7 +367,20 @@ function formatSyncTime(raw) {
   return sameDay ? `↻ Mac-${h}.${m}${ampm}` : `↻ Mac-${day} ${mon} ${h}.${m}${ampm}`;
 }
 
+let lastData = null;
+let showRemaining = localStorage.getItem('showRemaining') === 'true';
+
+function toggleView() {
+  showRemaining = !showRemaining;
+  localStorage.setItem('showRemaining', showRemaining);
+  const btn = document.getElementById('toggle-btn');
+  btn.textContent = showRemaining ? 'Show Consumed %' : 'Show Remaining %';
+  btn.classList.toggle('active', showRemaining);
+  if (lastData) render(lastData);
+}
+
 function render(d) {
+  lastData = d;
   const c = d.claude || {};
   const x = d.codex  || {};
 
@@ -364,44 +388,63 @@ function render(d) {
   document.getElementById('claude-plan').textContent  = c.plan_label || '—';
   document.getElementById('codex-plan').textContent   = x.plan_label || '—';
 
-  const cSPct = pctInt(c.session_pct);
-  const cWPct = pctInt(c.weekly_pct);
-  const cDPct = pctInt(c.design_weekly_pct);
-  const xSPct = pctInt(x.session_pct);
-  const xWPct = pctInt(x.weekly_pct);
+  // Used pcts — always drive colors, dots, and warning banners
+  const cSUsed = c.session_used_pct  ?? pctInt(c.session_pct);
+  const cWUsed = c.weekly_used_pct   ?? pctInt(c.weekly_pct);
+  const cDUsed = pctInt(c.design_weekly_pct);
+  const xSUsed = x.session_used_pct  ?? pctInt(x.session_pct);
+  const xWUsed = x.weekly_used_pct   ?? pctInt(x.weekly_pct);
 
-  drawDial(document.querySelector('#cd-current svg'),    cSPct, 90);
-  drawDial(document.querySelector('#cd-allmodels svg'),  cWPct, 90);
-  drawDial(document.querySelector('#cd-design svg'),     cDPct, 90);
-  drawDial(document.querySelector('#cx-current svg'),    xSPct, 110);
-  drawDial(document.querySelector('#cx-weekly svg'),     xWPct, 110);
+  // Display pcts — switch between used and remaining
+  const rem = (used, storedRemaining) => storedRemaining ?? (used !== null ? 100 - used : null);
+  const cSPct = showRemaining ? rem(cSUsed, c.session_remaining_pct)  : cSUsed;
+  const cWPct = showRemaining ? rem(cWUsed, c.weekly_remaining_pct)   : cWUsed;
+  const cDPct = showRemaining ? rem(cDUsed, null)                     : cDUsed;
+  const xSPct = showRemaining ? rem(xSUsed, x.session_remaining_pct)  : xSUsed;
+  const xWPct = showRemaining ? rem(xWUsed, x.weekly_remaining_pct)   : xWUsed;
 
-  document.getElementById('cd-current-pct').textContent  = c.session_pct   || '—';
-  document.getElementById('cd-allmodels-pct').textContent = c.weekly_pct    || '—';
-  document.getElementById('cd-design-pct').textContent   = c.design_weekly_pct || '—';
-  document.getElementById('cx-current-pct').textContent  = x.session_pct   || '—';
-  document.getElementById('cx-weekly-pct').textContent   = x.weekly_pct    || '—';
+  // Dial arc fill uses display pct; arc color always follows used pct
+  drawDial(document.querySelector('#cd-current svg'),   cSPct, 90,  cSUsed);
+  drawDial(document.querySelector('#cd-allmodels svg'), cWPct, 90,  cWUsed);
+  drawDial(document.querySelector('#cd-design svg'),    cDPct, 90,  cDUsed);
+  drawDial(document.querySelector('#cx-current svg'),   xSPct, 110, xSUsed);
+  drawDial(document.querySelector('#cx-weekly svg'),    xWPct, 110, xWUsed);
 
-  document.getElementById('cd-current-reset').textContent  = (c.session_reset || '').replace('Resets', '↻');
-  document.getElementById('claude-weekly-reset').textContent = (c.weekly_reset || '').replace('Resets', '↻');
-  document.getElementById('cx-current-reset').textContent  = (x.session_reset || '').replace('Resets', '↻');
-  document.getElementById('cx-weekly-reset').textContent   = (x.weekly_reset  || '').replace('Resets', '↻');
+  const fmt = v => v !== null ? v + '%' : '—';
+  document.getElementById('cd-current-pct').textContent   = fmt(cSPct);
+  document.getElementById('cd-allmodels-pct').textContent = fmt(cWPct);
+  document.getElementById('cd-design-pct').textContent    = fmt(cDPct);
+  document.getElementById('cx-current-pct').textContent   = fmt(xSPct);
+  document.getElementById('cx-weekly-pct').textContent    = fmt(xWPct);
 
-  setDot('cd-current-dot', cSPct);
-  setDot('cd-weekly-dot',  cWPct !== null || cDPct !== null ? Math.max(cWPct ?? 0, cDPct ?? 0) : null);
-  setDot('cx-current-dot', xSPct);
-  setDot('cx-weekly-dot',  xWPct);
+  document.getElementById('cd-current-reset').textContent    = (c.session_reset || '').replace('Resets', '↻');
+  document.getElementById('claude-weekly-reset').textContent = (c.weekly_reset  || '').replace('Resets', '↻');
+  document.getElementById('cx-current-reset').textContent    = (x.session_reset || '').replace('Resets', '↻');
+  document.getElementById('cx-weekly-reset').textContent     = (x.weekly_reset  || '').replace('Resets', '↻');
 
-  document.getElementById('cd-current-pct').style.color  = dialColor(cSPct);
-  document.getElementById('cd-allmodels-pct').style.color = dialColor(cWPct);
-  document.getElementById('cd-design-pct').style.color   = dialColor(cDPct);
-  document.getElementById('cx-current-pct').style.color  = dialColor(xSPct);
-  document.getElementById('cx-weekly-pct').style.color   = dialColor(xWPct);
+  // Dots and colors always based on used pct
+  setDot('cd-current-dot', cSUsed);
+  setDot('cd-weekly-dot',  cWUsed !== null || cDUsed !== null ? Math.max(cWUsed ?? 0, cDUsed ?? 0) : null);
+  setDot('cx-current-dot', xSUsed);
+  setDot('cx-weekly-dot',  xWUsed);
+
+  document.getElementById('cd-current-pct').style.color   = dialColor(cSUsed);
+  document.getElementById('cd-allmodels-pct').style.color  = dialColor(cWUsed);
+  document.getElementById('cd-design-pct').style.color    = dialColor(cDUsed);
+  document.getElementById('cx-current-pct').style.color   = dialColor(xSUsed);
+  document.getElementById('cx-weekly-pct').style.color    = dialColor(xWUsed);
 
   checkWarning(document.getElementById('claude-warning'),
-    {pct: cSPct, label: 'Session'}, {pct: cWPct, label: 'All Models'}, {pct: cDPct, label: 'Design'});
+    {pct: cSUsed, label: 'Session'}, {pct: cWUsed, label: 'All Models'}, {pct: cDUsed, label: 'Design'});
   checkWarning(document.getElementById('codex-warning'),
-    {pct: xSPct, label: 'Current'}, {pct: xWPct, label: 'Weekly'});
+    {pct: xSUsed, label: 'Current'}, {pct: xWUsed, label: 'Weekly'});
+
+  // Sync toggle button state on render (e.g. on page load)
+  const btn = document.getElementById('toggle-btn');
+  if (btn) {
+    btn.textContent = showRemaining ? 'Show Consumed %' : 'Show Remaining %';
+    btn.classList.toggle('active', showRemaining);
+  }
 }
 
 async function loadData() {
