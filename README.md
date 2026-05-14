@@ -135,6 +135,64 @@ rm -rf /Applications/Claude_Codex_Tracker.app
 
 ---
 
+## Mobile access (optional)
+
+View your usage on any device — phone, tablet, or browser — via a hosted web page that mirrors the Mac app dials in real time.
+
+**How it works:** The Mac tracker pushes a snapshot to [Supabase](https://supabase.com) after every fetch. A static web page (deployed to [Vercel](https://vercel.com) or [Netlify](https://netlify.com)) reads from Supabase and renders the dials. Data is at most 5 minutes old.
+
+### Setup
+
+**1. Create the Supabase table**
+
+In your Supabase project → SQL Editor, run:
+
+```sql
+create table tracker_snapshot (
+  id   int  primary key,
+  data text not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table tracker_snapshot enable row level security;
+create policy "anon read"   on tracker_snapshot for select using (true);
+create policy "anon upsert" on tracker_snapshot for insert with check (true);
+create policy "anon update" on tracker_snapshot for update using (true);
+```
+
+**2. Add your Supabase credentials to the Mac**
+
+Find your Project URL and anon key in Supabase → Settings → API Keys, then run:
+
+```bash
+mkdir -p ~/.claude-tracker
+cat > ~/.claude-tracker/supabase.json <<'EOF'
+{
+  "url": "https://YOUR-PROJECT.supabase.co",
+  "anon_key": "YOUR_ANON_KEY"
+}
+EOF
+chmod 600 ~/.claude-tracker/supabase.json
+```
+
+Then restart the tracker:
+
+```bash
+bash build.sh
+```
+
+**3. Deploy the web page**
+
+- Fork or clone this repo
+- In Vercel or Netlify, import the repo and set the **root/base directory** to `web`
+- Deploy — no environment variables needed (credentials are already embedded in `web/index.html`)
+
+**4. Add to your phone's home screen**
+
+Open the deployed URL in Safari → tap the Share button → **Add to Home Screen**. It opens as a standalone app with no browser chrome.
+
+---
+
 ## How it works
 
 | Layer | File | Role |
@@ -142,6 +200,8 @@ rm -rf /Applications/Claude_Codex_Tracker.app
 | UI | `src/native/Launcher.swift` | Menu bar app — dials, colors, warning banners |
 | Data | `src/python/tracker_data.py` | Background daemon — fetches usage from APIs |
 | Shared state | `~/.cache/claude-codex-tracker/data.json` | Written by Python, read by Swift every 10s |
+| Mobile sync | Supabase `tracker_snapshot` table | Python pushes JSON after every fetch cycle |
+| Mobile UI | `web/index.html` | Static page — SVG dials, auto-refreshes every 60s |
 
 - **Auth:** Claude's API accepts cookie-authenticated requests directly. Codex requires a Bearer token obtained from `chatgpt.com/api/auth/session` using your Chrome session.
 - **Refresh intervals:** Every 5 minutes normally, every 1 minute when at the usage limit.
@@ -150,7 +210,7 @@ rm -rf /Applications/Claude_Codex_Tracker.app
 
 ## Privacy
 
-This app reads Chrome cookies for `claude.ai` and `chatgpt.com` only. All data stays on your machine — nothing is sent anywhere other than the official Claude and Codex usage APIs.
+This app reads Chrome cookies for `claude.ai` and `chatgpt.com` only. If mobile access is enabled, usage percentages and reset times are pushed to your own Supabase project — no third-party analytics, no personal data. If mobile is not configured, all data stays entirely on your machine.
 
 ---
 
