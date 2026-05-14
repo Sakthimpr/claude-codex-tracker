@@ -981,7 +981,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         appMenu.addItem(cxh)
         appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "codex"))
 
-        let (odi, odv) = makeDialPairRow(hoverGroup: "codex")
+        let (odi, odv) = makeDialPairRow(height: 116, hoverGroup: "codex")
         codexDialItem = odi
         codexDialView = odv
         appMenu.addItem(odi)
