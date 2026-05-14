@@ -343,7 +343,7 @@ final class DialPairMenuRowView: NSView {
         if !sublabel.isEmpty {
             let subAttrs: [NSAttributedString.Key: Any] = [
                 .foregroundColor: NSColor(calibratedWhite: 0.82, alpha: 1.0),
-                .font: NSFont.systemFont(ofSize: 10, weight: .medium)
+                .font: NSFont.systemFont(ofSize: 11, weight: .medium)
             ]
             let subStr  = sublabel as NSString
             let subSize = subStr.size(withAttributes: subAttrs)
@@ -2414,7 +2414,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         claudeDialView.rightColor    = barColorForValue(cWView, isRemaining: showRemaining)
         claudeDialView.rightPct      = cWView
         claudeDialView.rightLabel    = "All Models"
-        claudeDialView.rightSublabel = "weekly"
+        claudeDialView.rightSublabel = "Weekly"
         claudeDialView.rightWarning  = isCriticalState(cWView, isRemaining: showRemaining)
         claudeDialView.rightGlow     = claudeWeeklyCapped ? 0.20 : 1.0
         claudeDialView.rightReset    = weeklyCountdownPhrase(cWReset) + " · " + weeklyClockPhrase(cWReset)
@@ -2424,7 +2424,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         claudeDialView.thirdColor    = barColorForValue(cDWView, isRemaining: showRemaining)
         claudeDialView.thirdPct      = cDWView
         claudeDialView.thirdLabel    = "Design"
-        claudeDialView.thirdSublabel = "weekly"
+        claudeDialView.thirdSublabel = "Weekly"
         claudeDialView.thirdWarning  = isCriticalState(cDWView, isRemaining: showRemaining)
         claudeDialView.thirdGlow     = cDWView == "—" ? 0.0 : 1.0
 
