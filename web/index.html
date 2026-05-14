@@ -329,7 +329,7 @@ function formatSyncTime(raw) {
   h = h % 12 || 12;
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const sameDay = new Date().getDate() === day && months[new Date().getMonth()] === mon;
-  return sameDay ? `↻ Mac -${h}:${m}${ampm} IST` : `↻ Mac -${day} ${mon} ${h}:${m}${ampm} IST`;
+  return sameDay ? `↻ Mac-${h}.${m}${ampm}` : `↻ Mac-${day} ${mon} ${h}.${m}${ampm}`;
 }
 
 function render(d) {
