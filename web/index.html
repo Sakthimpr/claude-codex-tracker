@@ -199,7 +199,10 @@
       <span class="status-dot" id="cd-current-dot"></span>
       <span id="cd-current-reset"></span>
     </div>
-    <div style="flex:2; text-align:center; font-size:12px; color:rgba(232,232,236,0.88);" id="claude-weekly-reset"></div>
+    <div style="flex:2; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; color:rgba(232,232,236,0.88);">
+      <span class="status-dot" id="cd-weekly-dot"></span>
+      <span id="claude-weekly-reset"></span>
+    </div>
   </div>
   <div class="warning-banner" id="claude-warning"></div>
 </div>
@@ -361,6 +364,7 @@ function render(d) {
   document.getElementById('cx-weekly-reset').textContent   = (x.weekly_reset  || '').replace('Resets', '↻');
 
   setDot('cd-current-dot', cSPct);
+  setDot('cd-weekly-dot',  cWPct !== null || cDPct !== null ? Math.max(cWPct ?? 0, cDPct ?? 0) : null);
   setDot('cx-current-dot', xSPct);
   setDot('cx-weekly-dot',  xWPct);
 
