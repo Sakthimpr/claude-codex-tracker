@@ -268,14 +268,14 @@ const GREEN = '#3aad74', AMBER = '#c8963a', RED = '#e0303a', TRACK = 'rgba(255,2
 
 function dialColor(pct) {
   if (pct === null || pct === undefined) return TRACK;
-  if (pct >= 80) return RED;
+  if (pct >= 100) return RED;
   if (pct >= 50) return AMBER;
   return GREEN;
 }
 
 function dotClass(pct) {
   if (pct === null || pct === undefined) return '';
-  if (pct >= 80) return 'red';
+  if (pct >= 100) return 'red';
   if (pct >= 50) return 'amber';
   return '';
 }

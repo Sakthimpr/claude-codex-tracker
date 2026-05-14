@@ -1827,7 +1827,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         case .watch:
             return usageHealthyGold
         case .critical:
-            return usageCriticalRed
+            return usageHealthyGold
         case .capped:
             return usageCriticalRed
         case .unknown:
