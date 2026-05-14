@@ -218,6 +218,7 @@ final class DialPairMenuRowView: NSView {
     var rightColor:    NSColor = .systemGreen { didSet { needsDisplay = true } }
     var rightPct:      String  = "—"   { didSet { needsDisplay = true } }
     var rightLabel:    String  = "Weekly" { didSet { needsDisplay = true } }
+    var rightSublabel: String  = ""    { didSet { needsDisplay = true } }
     var rightReset:    String  = "—"   { didSet { needsDisplay = true } }
     var rightWarning:  Bool    = false { didSet { needsDisplay = true } }
     var rightGlow:     CGFloat = 1.0   { didSet { needsDisplay = true } }
@@ -229,6 +230,7 @@ final class DialPairMenuRowView: NSView {
     var thirdColor:    NSColor = .systemGreen { didSet { needsDisplay = true } }
     var thirdPct:      String  = "—"   { didSet { needsDisplay = true } }
     var thirdLabel:    String  = "Design" { didSet { needsDisplay = true } }
+    var thirdSublabel: String  = ""    { didSet { needsDisplay = true } }
     var thirdReset:    String  = "—"   { didSet { needsDisplay = true } }
     var thirdWarning:  Bool    = false { didSet { needsDisplay = true } }
     var thirdGlow:     CGFloat = 1.0   { didSet { needsDisplay = true } }
@@ -252,12 +254,14 @@ final class DialPairMenuRowView: NSView {
                  warning: leftWarning,  glow: leftGlow)
         drawDial(cx: mx, fraction: rightFraction, color: rightColor,
                  pct: rightPct,  label: rightLabel,  reset: rightReset,
-                 warning: rightWarning, glow: rightGlow, skipReset: showThird)
+                 warning: rightWarning, glow: rightGlow, skipReset: showThird,
+                 sublabel: rightSublabel)
         if showThird {
             let rx = bounds.width * 0.833
             drawDial(cx: rx, fraction: thirdFraction, color: thirdColor,
                      pct: thirdPct, label: thirdLabel, reset: thirdReset,
-                     warning: thirdWarning, glow: thirdGlow, skipReset: true)
+                     warning: thirdWarning, glow: thirdGlow, skipReset: true,
+                     sublabel: thirdSublabel)
             if showDivider { drawVerticalDivider() }
             drawSharedReset(cx: (mx + rx) / 2, text: rightReset)
         }
@@ -265,7 +269,8 @@ final class DialPairMenuRowView: NSView {
 
     private func drawDial(cx: CGFloat, fraction: CGFloat, color: NSColor,
                           pct: String, label: String, reset: String,
-                          warning: Bool, glow: CGFloat, skipReset: Bool = false) {
+                          warning: Bool, glow: CGFloat, skipReset: Bool = false,
+                          sublabel: String = "") {
         let center = CGPoint(x: cx, y: dialCenterY)
         let clamp  = min(max(fraction, 0), 1)
 
@@ -335,6 +340,17 @@ final class DialPairMenuRowView: NSView {
         let arcTop  = center.y + drawRadius + trackWidth / 2
         lblStr.draw(at: CGPoint(x: center.x - lblSize.width / 2, y: arcTop + 5),
                     withAttributes: lblAttrs)
+        if !sublabel.isEmpty {
+            let subAttrs: [NSAttributedString.Key: Any] = [
+                .foregroundColor: NSColor(calibratedWhite: 0.65, alpha: 1.0),
+                .font: NSFont.systemFont(ofSize: 9, weight: .regular)
+            ]
+            let subStr  = sublabel as NSString
+            let subSize = subStr.size(withAttributes: subAttrs)
+            subStr.draw(at: CGPoint(x: center.x - subSize.width / 2,
+                                    y: arcTop + 5 + lblSize.height + 1),
+                        withAttributes: subAttrs)
+        }
 
         // Reset line below arc
         if !skipReset {
@@ -935,7 +951,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         appMenu.addItem(clh)
         appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "claude"))
 
-        let (cdi, cdv) = makeDialPairRow(height: 100, hoverGroup: "claude")
+        let (cdi, cdv) = makeDialPairRow(height: 116, hoverGroup: "claude")
         claudeDialItem = cdi
         claudeDialView = cdv
         cdv.showThird   = true
@@ -2398,6 +2414,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         claudeDialView.rightColor    = barColorForValue(cWView, isRemaining: showRemaining)
         claudeDialView.rightPct      = cWView
         claudeDialView.rightLabel    = "All Models"
+        claudeDialView.rightSublabel = "weekly"
         claudeDialView.rightWarning  = isCriticalState(cWView, isRemaining: showRemaining)
         claudeDialView.rightGlow     = claudeWeeklyCapped ? 0.20 : 1.0
         claudeDialView.rightReset    = weeklyCountdownPhrase(cWReset) + " · " + weeklyClockPhrase(cWReset)
@@ -2407,6 +2424,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         claudeDialView.thirdColor    = barColorForValue(cDWView, isRemaining: showRemaining)
         claudeDialView.thirdPct      = cDWView
         claudeDialView.thirdLabel    = "Design"
+        claudeDialView.thirdSublabel = "weekly"
         claudeDialView.thirdWarning  = isCriticalState(cDWView, isRemaining: showRemaining)
         claudeDialView.thirdGlow     = cDWView == "—" ? 0.0 : 1.0
 
