@@ -23,7 +23,7 @@
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
     font-size: 14px;
     min-height: 100dvh;
-    padding: 16px 12px 32px;
+    padding: 40px 12px 32px;
   }
   header {
     display: flex;
@@ -315,11 +315,23 @@ function checkWarning(bannerEl, ...pcts) {
   }
 }
 
+function formatSyncTime(raw) {
+  if (!raw) return '';
+  const parts = raw.trim().split(/\s+/);
+  if (parts.length < 3) return raw;
+  const day = parts[0], mon = parts[1], timeParts = parts[2].split(':');
+  let h = parseInt(timeParts[0], 10);
+  const m = timeParts[1];
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `Synced ${day}-${mon}-${h}.${m}${ampm} IST`;
+}
+
 function render(d) {
   const c = d.claude || {};
   const x = d.codex  || {};
 
-  document.getElementById('last-updated').textContent = 'Mac synced ' + (d.last_updated || '');
+  document.getElementById('last-updated').textContent = formatSyncTime(d.last_updated);
   document.getElementById('claude-plan').textContent  = c.plan_label || '—';
   document.getElementById('codex-plan').textContent   = x.plan_label || '—';
 
