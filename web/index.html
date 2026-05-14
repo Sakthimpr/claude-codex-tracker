@@ -10,7 +10,7 @@
     --card:      #242428;
     --border:    rgba(255,255,255,0.08);
     --text:      #e8e8ec;
-    --muted:     rgba(232,232,236,0.55);
+    --muted:     rgba(232,232,236,0.75);
     --green:     #3aad74;
     --amber:     #c8963a;
     --red:       #e0303a;
@@ -55,20 +55,20 @@
   }
   .card-title {
     font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .plan-badge {
-    font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.8px;
-    padding: 2px 7px;
+    text-transform: uppercase;
+    color: #e8e8ec;
+  }
+  .plan-badge {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    padding: 3px 8px;
     border-radius: 6px;
-    border: 1px solid var(--border);
-    color: var(--text);
-    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #e8e8ec;
+    background: rgba(255,255,255,0.10);
   }
   .dials-row {
     display: flex;
@@ -317,7 +317,7 @@ function render(d) {
   const c = d.claude || {};
   const x = d.codex  || {};
 
-  document.getElementById('last-updated').textContent = d.last_updated || '';
+  document.getElementById('last-updated').textContent = 'Mac synced ' + (d.last_updated || '');
   document.getElementById('claude-plan').textContent  = c.plan_label || '—';
   document.getElementById('codex-plan').textContent   = x.plan_label || '—';
 
