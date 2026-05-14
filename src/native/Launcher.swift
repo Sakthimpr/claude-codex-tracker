@@ -1098,24 +1098,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         item: NSMenuItem, view: WarnBannerView,
         sessionPct: String, weeklyPct: String,
         sectionName: String, sessionReset: String, weeklyReset: String,
-        isRemaining: Bool
+        isRemaining: Bool,
+        designPct: String = "—", designReset: String = ""
     ) {
         let sState = meterState(for: sessionPct, isRemaining: isRemaining)
         let wState = meterState(for: weeklyPct,  isRemaining: isRemaining)
+        let dState = meterState(for: designPct,  isRemaining: isRemaining)
         let sCritical = sState == .critical || sState == .capped
         let wCritical = wState == .critical || wState == .capped
-        guard sCritical || wCritical else { item.isHidden = true; return }
+        let dCritical = dState == .critical || dState == .capped
+        guard sCritical || wCritical || dCritical else { item.isHidden = true; return }
 
-        // Determine effective "used" value for severity comparison
         let sUsed = isRemaining ? (100 - (pctInt(sessionPct) ?? 0)) : (pctInt(sessionPct) ?? 0)
         let wUsed = isRemaining ? (100 - (pctInt(weeklyPct)  ?? 0)) : (pctInt(weeklyPct)  ?? 0)
-        let useWeekly = wCritical && wUsed >= sUsed
-        let label     = useWeekly ? "weekly" : "session"
-        let pct       = useWeekly ? weeklyPct : sessionPct
-        let clock     = useWeekly
-            ? weeklyClockPhrase(weeklyReset)
-            : sessionClockPhrase(sessionReset, pct: sessionPct)
-        let highest   = max(sUsed, wUsed)
+        let dUsed = isRemaining ? (100 - (pctInt(designPct)  ?? 0)) : (pctInt(designPct)  ?? 0)
+        let useDesign = dCritical && dUsed >= sUsed && dUsed >= wUsed
+        let useWeekly = !useDesign && wCritical && wUsed >= sUsed
+        let label     = useDesign ? "Design" : useWeekly ? "weekly" : "session"
+        let pct       = useDesign ? designPct : useWeekly ? weeklyPct : sessionPct
+        let clock     = useDesign ? weeklyClockPhrase(designReset)
+                      : useWeekly ? weeklyClockPhrase(weeklyReset)
+                      : sessionClockPhrase(sessionReset, pct: sessionPct)
+        let highest   = max(sUsed, wUsed, dCritical ? dUsed : 0)
         let color     = highest >= 100 ? usageCriticalRed : usageHealthyGold
         let suffix    = clock.isEmpty ? "." : ". Resets \(clock)."
         view.update(message: "⚠  \(sectionName) \(label) at \(pct)\(suffix)", color: color)
@@ -2310,6 +2314,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
         let cSReset  = stringValue(claude["session_reset"])
         let cWReset  = stringValue(claude["weekly_reset"])
+        let cDWReset = stringValue(claude["design_weekly_reset"])
         let cDWPct   = stringValue(claude["design_weekly_pct"])
         let cPlanRaw = stringValue(claude["plan_label"], fallback: "PRO")
         let cStatus = stringValue(claude["status"])
@@ -2355,7 +2360,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
             self.updateStatusDotTooltips(
                 claudeSessionValue: cSEffectiveView, claudeSessionReset: cSReset,
                 claudeWeeklyValue:  cWView,           claudeWeeklyReset:  cWReset,
-                claudeDesignValue:  cDWView,           claudeDesignReset:  cWReset,
+                claudeDesignValue:  cDWView,           claudeDesignReset:  cDWReset,
                 codexSessionValue:  oSEffectiveView,  codexSessionReset:  oSReset,
                 codexWeeklyValue:   oWView,            codexWeeklyReset:   oWReset,
                 cSDot: cSDot,
@@ -2368,7 +2373,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let dot = "●"
         let refreshedClock = compactClock(updated).trimmingCharacters(in: .whitespacesAndNewlines)
         let refreshText = "↻ " + headerClockDisplay(refreshedClock)
-        let maxUsed = [cSEffectiveView, cWView, oSEffectiveView, oWView].compactMap { pctInt($0) }.map { showRemaining ? (100 - $0) : $0 }.max() ?? 0
+        let maxUsed = [cSEffectiveView, cWView, cDWView, oSEffectiveView, oWView].compactMap { pctInt($0) }.map { showRemaining ? (100 - $0) : $0 }.max() ?? 0
         let worstDotColor: NSColor = maxUsed >= 80 ? usageCriticalRed : maxUsed >= 50 ? usageHealthyGold : NSColor(calibratedRed: 0.58, green: 0.90, blue: 0.62, alpha: 1.0)
         setHeaderLabel(dot: dot, isLive: isLive, title: "Claude & Codex — Usage", refreshText: refreshText, dotColor: worstDotColor)
         let claudeCapped = isCappedState(cSEffectiveView, isRemaining: showRemaining)
@@ -2426,7 +2431,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         applyWarningBanner(item: claudeWarningItem, view: claudeWarningView,
                            sessionPct: cSEffectiveView, weeklyPct: cWView,
                            sectionName: "Claude", sessionReset: cSReset, weeklyReset: cWReset,
-                           isRemaining: showRemaining)
+                           isRemaining: showRemaining,
+                           designPct: cDWView, designReset: cDWReset)
         applyWarningBanner(item: codexWarningItem, view: codexWarningView,
                            sessionPct: oSEffectiveView, weeklyPct: oWView,
                            sectionName: "Codex", sessionReset: oSReset, weeklyReset: oWReset,
