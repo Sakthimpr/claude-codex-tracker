@@ -90,7 +90,7 @@ If you see an error or dashes instead of numbers, make sure you are logged in to
 | Action | How |
 |---|---|
 | View usage | Click the menu bar icon |
-| Switch used ↔ remaining % | Click **Show Remaining %** or press `⌘M` |
+| Switch consumed ↔ remaining % | Click **Switch to Remaining** / **Switch to Consumed** or press `⌘M` |
 | See reset time per dot | Hover over any colored dot in the menu bar |
 | Open Claude usage page | Click **Open Claude Analytics** |
 | Open Codex usage page | Click **Open Codex Analytics** |

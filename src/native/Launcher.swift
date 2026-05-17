@@ -338,7 +338,8 @@ final class DialPairMenuRowView: NSView {
         let lblStr  = label as NSString
         let lblSize = lblStr.size(withAttributes: lblAttrs)
         let arcTop  = center.y + drawRadius + trackWidth / 2
-        lblStr.draw(at: CGPoint(x: center.x - lblSize.width / 2, y: arcTop + 5),
+        let labelY = arcTop + 5
+        lblStr.draw(at: CGPoint(x: center.x - lblSize.width / 2, y: labelY),
                     withAttributes: lblAttrs)
         if !sublabel.isEmpty {
             let subAttrs: [NSAttributedString.Key: Any] = [
@@ -929,7 +930,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
         let header = headerText
 
-        let (h, lbH) = makeRow(text: "  ● Claude & Codex — Usage                         --:--", color: header, size: 13, bold: true, height: 40, mono: false)
+        let (h, lbH) = makeRow(text: "  ● Claude & Codex — Consumed                      --:--", color: header, size: 13, bold: true, height: 40, mono: false)
         lbHeader = lbH
         if let hv = h.view {
             hv.wantsLayer = true
@@ -997,7 +998,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         appMenu.addItem(makeSeparatorRow(height: 8, group: "footer"))
 
         let (toggleItem, lbToggle) = makeActionRow(
-            title: "Show Remaining %",
+            title: "Switch to Remaining",
             shortcut: "⌘M",
             action: #selector(toggleUsageMode),
             keyEquivalent: "m"
@@ -2166,7 +2167,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
             }
         }
         guard let clock = unlockClock(from: reset) else { return "" }
-        return "at \(clock)"
+        return clock
     }
 
     func weeklyCountdownPhrase(_ reset: String) -> String {
@@ -2220,12 +2221,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     }
 
     func setHeaderLabel(dot: String, isLive: Bool, title: String, refreshText: String, dotColor: NSColor? = nil) {
-        // title is expected to be "Claude & Codex — Usage"; split at " —" for hierarchy
-        let dashSuffix = " — Usage"
-        let mainTitle  = title.hasSuffix(dashSuffix)
-            ? String(title.dropLast(dashSuffix.count))
-            : title
-        let subTitle   = title.hasSuffix(dashSuffix) ? dashSuffix : ""
+        // title is expected to be "Claude & Codex — <Mode>"; split at the separator.
+        let separator = " — "
+        let mainTitle: String
+        let subTitle: String
+        if let r = title.range(of: separator) {
+            mainTitle = String(title[..<r.lowerBound])
+            subTitle = String(title[r.lowerBound...])
+        } else {
+            mainTitle = title
+            subTitle = ""
+        }
         let text = "  \(dot) \(mainTitle)\(subTitle)\t\(refreshText)"
 
         let tabRight = (rowWidth - barInsetX) - textLeftX
@@ -2252,7 +2258,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
             glow.shadowOffset = .zero
             attr.addAttribute(.shadow, value: glow, range: ns)
         }
-        // "— Usage" suffix — slightly dimmer but readable
+        // "— Consumed/Remaining" suffix — slightly dimmer but readable
         if !subTitle.isEmpty, let subRange = attr.string.range(of: subTitle) {
             let ns = NSRange(subRange, in: attr.string)
             attr.addAttribute(.foregroundColor, value: headerText.withAlphaComponent(0.88), range: ns)
@@ -2406,7 +2412,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let refreshText = "↻ " + headerClockDisplay(refreshedClock)
         let maxUsed = [cSEffectiveView, cWView, cDWView, oSEffectiveView, oWView].compactMap { pctInt($0) }.map { showRemaining ? (100 - $0) : $0 }.max() ?? 0
         let worstDotColor: NSColor = maxUsed >= 100 ? usageCriticalRed : maxUsed >= 50 ? usageHealthyGold : NSColor(calibratedRed: 0.58, green: 0.90, blue: 0.62, alpha: 1.0)
-        setHeaderLabel(dot: dot, isLive: isLive, title: "Claude & Codex — Usage", refreshText: refreshText, dotColor: worstDotColor)
+        let modeTitle = showRemaining ? "Claude & Codex — Remaining" : "Claude & Codex — Consumed"
+        setHeaderLabel(dot: dot, isLive: isLive, title: modeTitle, refreshText: refreshText, dotColor: worstDotColor)
         let claudeCapped = isCappedState(cSEffectiveView, isRemaining: showRemaining)
         let codexCapped = isCappedState(oSEffectiveView, isRemaining: showRemaining)
         claudeIsCapped = claudeCapped
@@ -2471,7 +2478,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
                            sectionName: "Codex", sessionReset: oSReset, weeklyReset: oWReset,
                            isRemaining: showRemaining)
 
-        let toggleTitle = showRemaining ? "Show Consumed %" : "Show Remaining %"
+        let toggleTitle = showRemaining ? "Switch to Consumed" : "Switch to Remaining"
         toggleUsageModeItem.title = toggleTitle
         setActionRowLabel(lbToggleActionTitle, title: toggleTitle, shortcut: toggleShortcutText)
         applyHoverDisclosure()

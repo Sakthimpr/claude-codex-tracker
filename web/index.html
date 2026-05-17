@@ -118,6 +118,9 @@
     opacity: 0.82;
     margin-top: 2px;
   }
+  .dial-sublabel-placeholder {
+    visibility: hidden;
+  }
   .dial-pct {
     font-size: 20px;
     font-weight: 700;
@@ -192,7 +195,7 @@
 </head>
 <body>
 <header>
-  <h1>Claude &amp; Codex - Usage</h1>
+  <h1 id="page-title">Claude &amp; Codex — Consumed</h1>
   <span id="last-updated">Loading…</span>
 </header>
 
@@ -207,7 +210,7 @@
       <div class="dial-wrap" id="cd-current">
         <svg width="90" height="90" viewBox="0 0 90 90"></svg>
         <div class="dial-pct" id="cd-current-pct">—</div>
-        <div class="dial-label">Current</div>
+        <div class="dial-label">Current<span class="dial-sublabel dial-sublabel-placeholder" aria-hidden="true">&nbsp;</span></div>
       </div>
       <div class="dial-wrap" id="cd-allmodels">
         <svg width="90" height="90" viewBox="0 0 90 90"></svg>
@@ -266,7 +269,7 @@
 
 <div class="btn-row">
   <button class="refresh-btn" onclick="window.location.reload()">Refresh now</button>
-  <button class="toggle-btn" id="toggle-btn" onclick="toggleView()">Show Remaining %</button>
+  <button class="toggle-btn" id="toggle-btn" onclick="toggleView()">Switch to Remaining</button>
 </div>
 <div id="error-msg"></div>
 
@@ -371,7 +374,7 @@ function toggleView() {
   showRemaining = !showRemaining;
   localStorage.setItem('showRemaining', showRemaining);
   const btn = document.getElementById('toggle-btn');
-  btn.textContent = showRemaining ? 'Show Consumed %' : 'Show Remaining %';
+  btn.textContent = showRemaining ? 'Switch to Consumed' : 'Switch to Remaining';
   btn.classList.toggle('active', showRemaining);
   if (lastData) render(lastData);
 }
@@ -380,6 +383,9 @@ function render(d) {
   lastData = d;
   const c = d.claude || {};
   const x = d.codex  || {};
+  document.getElementById('page-title').textContent = showRemaining
+    ? 'Claude & Codex — Remaining'
+    : 'Claude & Codex — Consumed';
 
   document.getElementById('last-updated').textContent = formatSyncTime(d.last_updated);
   document.getElementById('claude-plan').textContent  = c.plan_label || '—';
@@ -439,7 +445,7 @@ function render(d) {
   // Sync toggle button state on render (e.g. on page load)
   const btn = document.getElementById('toggle-btn');
   if (btn) {
-    btn.textContent = showRemaining ? 'Show Consumed %' : 'Show Remaining %';
+    btn.textContent = showRemaining ? 'Switch to Consumed' : 'Switch to Remaining';
     btn.classList.toggle('active', showRemaining);
   }
 }
