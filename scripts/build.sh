@@ -76,9 +76,10 @@ echo "✅  Icon ready"
 # ── Step 3: Install ───────────────────────────────────────────────────────────
 echo ""
 echo "▶ Stopping any running instance..."
-pkill -f "${BINARY_NAME}"   2>/dev/null || true
-pkill -f "tracker_data.py"  2>/dev/null || true
-pkill -f "ClaudeTracker"    2>/dev/null || true
+# Kill by exact installed path to avoid hitting unrelated processes with the same name
+pkill -x "${BINARY_NAME}"                                     2>/dev/null || true
+kill "$(pgrep -f "python.*${INSTALL_DIR}/tracker_data\.py")" 2>/dev/null || true
+pkill -x "ClaudeTracker"                                      2>/dev/null || true
 sleep 0.5
 
 echo "▶ Installing to ${INSTALL_BIN}..."

@@ -9,12 +9,22 @@ Writes JSON to ~/.cache/claude-codex-tracker/data.json for the Swift menu bar ap
 """
 
 import json
+import logging
 import os
 import time
 from datetime import datetime, timezone
 from tempfile import NamedTemporaryFile
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+logging.basicConfig(
+    filename="/tmp/claude-tracker-fetcher.log",
+    level=logging.ERROR,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+_log = logging.getLogger(__name__)
 
 REFRESH_INTERVAL = 300      # 5 minutes
 REFRESH_AT_LIMIT = 60       # 1 minute when at 100%
@@ -62,8 +72,8 @@ def write_data(**kwargs):
             os.chmod(OUTPUT_FILE, 0o600)
         except Exception:
             pass
-    except Exception:
-        pass
+    except Exception as e:
+        _log.error("write_data failed: %s", e)
 
 
 def safe_int(value, default=0):
@@ -264,13 +274,20 @@ def resolve_claude_org_id(session):
     return _extract_org_id(payload)
 
 
+def _make_session_with_retry():
+    session = requests.Session()
+    retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[429, 500, 502, 503, 504])
+    session.mount("https://", HTTPAdapter(max_retries=retry))
+    return session
+
+
 def fetch_claude_usage(consecutive_failures):
     try:
         cookies = get_claude_cookies(force=(consecutive_failures >= 2))
         if not cookies:
             return default_block("Log in to claude.ai in Chrome first"), False, consecutive_failures + 1
 
-        session = requests.Session()
+        session = _make_session_with_retry()
         session.cookies = cookies
 
         org_id = resolve_claude_org_id(session)
@@ -351,7 +368,7 @@ def fetch_codex_usage(consecutive_failures):
         if not cookies:
             return default_block("Log in to chatgpt.com in Chrome first"), False, consecutive_failures + 1
 
-        session = requests.Session()
+        session = _make_session_with_retry()
         session.cookies = cookies
 
         session_resp = session.get(
@@ -428,7 +445,7 @@ def push_to_supabase(payload):
         with open(SUPABASE_CONFIG_PATH, encoding="utf-8") as f:
             cfg = json.load(f)
         url = cfg.get("url", "").rstrip("/")
-        key = cfg.get("anon_key", "")
+        key = cfg.get("service_role_key", "")
         if not url or not key:
             return
         endpoint = f"{url}/rest/v1/tracker_snapshot"
@@ -445,9 +462,9 @@ def push_to_supabase(payload):
             timeout=10,
         )
         if resp.status_code not in (200, 201):
-            pass  # silent fail — mobile is optional
-    except Exception:
-        pass
+            _log.error("Supabase push failed: HTTP %s — %s", resp.status_code, resp.text[:200])
+    except Exception as e:
+        _log.error("Supabase push exception: %s", e)
 
 
 def main():

@@ -1626,9 +1626,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         lastDataMTime = mtime
 
         let url = URL(fileURLWithPath: path)
-        guard let data = try? Data(contentsOf: url),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return }
+        guard let data = try? Data(contentsOf: url) else { return }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            let msg = "[\(Date())] loadData: JSON parse failed for \(path)\n"
+            if let logData = msg.data(using: .utf8) {
+                let logURL = URL(fileURLWithPath: "/tmp/claude-tracker-fetcher.log")
+                if let handle = try? FileHandle(forWritingTo: logURL) {
+                    handle.seekToEndOfFile()
+                    handle.write(logData)
+                    handle.closeFile()
+                } else {
+                    try? logData.write(to: logURL, options: .atomic)
+                }
+            }
+            DispatchQueue.main.async {
+                self.setLabel(self.lbHeader, self.twoCol("● Data parse error", "check /tmp/claude-tracker-fetcher.log", total: self.columns), color: self.usageRed, size: 13, bold: true, mono: true)
+            }
+            return
+        }
         lastPayload = json
         DispatchQueue.main.async { self.updateUI(json) }
     }

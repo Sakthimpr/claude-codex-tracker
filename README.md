@@ -155,21 +155,28 @@ create table tracker_snapshot (
 );
 
 alter table tracker_snapshot enable row level security;
-create policy "anon read"   on tracker_snapshot for select using (true);
-create policy "anon upsert" on tracker_snapshot for insert with check (true);
-create policy "anon update" on tracker_snapshot for update using (true);
+-- anon users (web page): read-only
+create policy "anon read" on tracker_snapshot for select using (true);
+-- writes require service_role key (Mac daemon only — never exposed in the browser)
+create policy "service_role upsert" on tracker_snapshot for insert
+  with check (auth.role() = 'service_role');
+create policy "service_role update" on tracker_snapshot for update
+  using (auth.role() = 'service_role');
 ```
 
 **2. Add your Supabase credentials to the Mac**
 
-Find your Project URL and anon key in Supabase → Settings → API Keys, then run:
+Find your Project URL and keys in Supabase → Settings → API Keys:
+- **URL** — project URL
+- **anon/public key** — goes into `web/config.js` (read-only, safe to expose)
+- **service_role key** — goes into `~/.claude-tracker/supabase.json` (write access, never expose)
 
 ```bash
 mkdir -p ~/.claude-tracker
 cat > ~/.claude-tracker/supabase.json <<'EOF'
 {
   "url": "https://YOUR-PROJECT.supabase.co",
-  "anon_key": "YOUR_ANON_KEY"
+  "service_role_key": "YOUR_SERVICE_ROLE_KEY"
 }
 EOF
 chmod 600 ~/.claude-tracker/supabase.json
