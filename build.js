@@ -1,0 +1,9 @@
+const fs = require('fs');
+const url = process.env.SUPABASE_URL;
+const key = process.env.SUPABASE_ANON_KEY;
+if (!url || !key) {
+  console.error('ERROR: SUPABASE_URL and SUPABASE_ANON_KEY must be set in Vercel Environment Variables');
+  process.exit(1);
+}
+fs.writeFileSync('web/config.js', `window.SUPABASE_URL      = '${url}';\nwindow.SUPABASE_ANON_KEY = '${key}';\n`);
+console.log('web/config.js generated from environment variables');

@@ -1,5 +1,5 @@
 {
-  "buildCommand": "bash scripts/generate-web-config.sh",
+  "buildCommand": "node build.js",
   "outputDirectory": "web",
   "installCommand": ""
 }
