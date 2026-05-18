@@ -52,6 +52,8 @@ Menu bar app (Swift + Python) that shows Claude and Codex usage side-by-side.
 
 **Rule:** The Mac daemon uses `service_role_key` for writes. The browser uses `anon` key for reads only. Never swap these. Never put `service_role_key` in `config.js`.
 
+**Post-fix verification (mandatory):** After any change to `push_to_supabase` or `supabase.json` key handling, immediately run a manual push test and confirm HTTP 200 AND that the `updated_at` timestamp in Supabase has changed. Silent return (missing key) and RLS rejection (wrong key) both look like success from the daemon's perspective without this check.
+
 ---
 
 ### VULN-03 (High) — Silent exception swallowing hid failures and caused stale state
