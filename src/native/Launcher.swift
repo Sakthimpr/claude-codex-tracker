@@ -1863,7 +1863,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         guard let n = pctInt(pct) else { return .unknown }
         let effective = isRemaining ? (100 - n) : n
         if effective >= 100 { return .capped }
-        if effective >= 80  { return .critical }
+        if effective >= 90  { return .critical }
         if effective >= 50  { return .watch }
         return .healthy
     }
