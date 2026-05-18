@@ -2192,8 +2192,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
     func weeklyClockPhrase(_ reset: String) -> String {
         if let target = resetDate(from: reset) {
-            let day = shortDayFormatter.string(from: target)
             let time = formattedClock(target)
+            if Calendar.current.isDateInToday(target) { return time }
+            let day = shortDayFormatter.string(from: target)
             return "\(day) \(time)"
         }
         return ""
@@ -2201,8 +2202,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
     func weeklyResumePhrase(_ reset: String) -> String {
         if let target = resetDate(from: reset) {
-            let day = shortDayFormatter.string(from: target)
             let time = formattedClock(target)
+            if Calendar.current.isDateInToday(target) { return "↻ \(time)" }
+            let day = shortDayFormatter.string(from: target)
             return "↻ \(day), \(time)"
         }
         return "↻ soon"
