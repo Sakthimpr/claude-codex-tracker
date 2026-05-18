@@ -76,10 +76,13 @@ echo "✅  Icon ready"
 # ── Step 3: Install ───────────────────────────────────────────────────────────
 echo ""
 echo "▶ Stopping any running instance..."
-# Kill by exact installed path to avoid hitting unrelated processes with the same name
-pkill -x "${BINARY_NAME}"                                     2>/dev/null || true
-kill "$(pgrep -f "python.*${INSTALL_DIR}/tracker_data\.py")" 2>/dev/null || true
-pkill -x "ClaudeTracker"                                      2>/dev/null || true
+# Unload LaunchAgent first — prevents KeepAlive from immediately respawning the process
+launchctl unload "${HOME}/Library/LaunchAgents/com.sakthivel.claudetracker.plist" 2>/dev/null || true
+sleep 0.3
+# Kill any remaining processes anchored to exact installed paths
+pkill -x "${BINARY_NAME}"                                    2>/dev/null || true
+pkill -f "${INSTALL_DIR}/tracker_data\.py"                   2>/dev/null || true
+pkill -x "ClaudeTracker"                                     2>/dev/null || true
 sleep 0.5
 
 echo "▶ Installing to ${INSTALL_BIN}..."

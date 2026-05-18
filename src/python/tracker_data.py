@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from tempfile import NamedTemporaryFile
 
@@ -475,14 +476,17 @@ def main():
     claude_failures = 0
     codex_failures = 0
 
-    while True:
-        claude_block, claude_at_limit, claude_failures = fetch_claude_usage(claude_failures)
-        codex_block, codex_at_limit, codex_failures = fetch_codex_usage(codex_failures)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        while True:
+            claude_future = executor.submit(fetch_claude_usage, claude_failures)
+            codex_future  = executor.submit(fetch_codex_usage,  codex_failures)
+            claude_block, claude_at_limit, claude_failures = claude_future.result()
+            codex_block,  codex_at_limit,  codex_failures  = codex_future.result()
 
-        payload = build_payload(claude_block, codex_block)
-        write_data(**payload)
-        push_to_supabase(payload)
-        time.sleep(REFRESH_AT_LIMIT if (claude_at_limit or codex_at_limit) else REFRESH_INTERVAL)
+            payload = build_payload(claude_block, codex_block)
+            write_data(**payload)
+            push_to_supabase(payload)
+            time.sleep(REFRESH_AT_LIMIT if (claude_at_limit or codex_at_limit) else REFRESH_INTERVAL)
 
 
 if __name__ == "__main__":

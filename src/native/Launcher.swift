@@ -1587,7 +1587,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
     func startPolling() {
         loadData()
-        Timer.scheduledTimer(withTimeInterval: 10, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             self?.loadData()
             self?.ensureFetcherHealthy()
         }
