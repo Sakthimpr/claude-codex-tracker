@@ -442,12 +442,14 @@ def fetch_codex_usage(consecutive_failures):
 def push_to_supabase(payload):
     try:
         if not os.path.exists(SUPABASE_CONFIG_PATH):
+            _log.error("push_to_supabase: config file missing at %s", SUPABASE_CONFIG_PATH)
             return
         with open(SUPABASE_CONFIG_PATH, encoding="utf-8") as f:
             cfg = json.load(f)
         url = cfg.get("url", "").rstrip("/")
         key = cfg.get("service_role_key", "")
         if not url or not key:
+            _log.error("push_to_supabase: url or service_role_key missing from %s", SUPABASE_CONFIG_PATH)
             return
         endpoint = f"{url}/rest/v1/tracker_snapshot"
         row = {"id": 1, "data": json.dumps(payload), "updated_at": datetime.now(timezone.utc).isoformat()}
