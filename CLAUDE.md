@@ -7,7 +7,16 @@ Menu bar app (Swift + Python) that shows Claude and Codex usage side-by-side.
 - `web/index.html` — hosted web page for mobile view (reads from Supabase)
 - `scripts/build.sh` — build, package, and install script
 - `web/config.js` — local Supabase credentials for the web page (gitignored, never commit)
+- `web/build.js` — Vercel build script: writes `config.js` from env vars at deploy time
+- `vercel.json` — Vercel config: buildCommand + outputDirectory (repo root, but Vercel root dir = `web/`)
 - `~/.claude-tracker/supabase.json` — Supabase service_role key for the Mac daemon (chmod 600)
+
+## Vercel Deployment (Critical Notes)
+- **Root Directory** in Vercel project settings is set to `web/` — all build commands run from inside `web/`
+- `vercel.json` sits at repo root but is still read by Vercel; `outputDirectory` must be `.` not `web` (already inside `web/`)
+- `web/build.js` writes `config.js` to `./config.js` (not `web/config.js`) for the same reason
+- Env vars `SUPABASE_URL` and `SUPABASE_ANON_KEY` must be set in Vercel → Project → Settings → Environment Variables
+- **Never add a hardcoded key fallback** to `web/index.html` — if the page breaks after deploy, fix the env vars or build script, not the HTML
 
 ## Task → Section Map
 | Task area | File | Key symbol |
