@@ -1,0 +1,5 @@
+{
+  "buildCommand": "bash scripts/generate-web-config.sh",
+  "outputDirectory": "web",
+  "installCommand": ""
+}

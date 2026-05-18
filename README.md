@@ -191,8 +191,11 @@ bash build.sh
 **3. Deploy the web page**
 
 - Fork or clone this repo
-- In Vercel or Netlify, import the repo and set the **root/base directory** to `web`
-- Deploy — no environment variables needed (credentials are already embedded in `web/index.html`)
+- In **Vercel**: import the repo — leave root directory as `/` (the included `vercel.json` handles everything)
+- In Vercel → **Settings → Environment Variables**, add:
+  - `SUPABASE_URL` — your project URL (e.g. `https://xxxx.supabase.co`)
+  - `SUPABASE_ANON_KEY` — your anon/public key
+- Deploy — Vercel runs `scripts/generate-web-config.sh` at build time, which writes `web/config.js` from those env vars. The key never touches git.
 
 **4. Add to your phone's home screen**
 
