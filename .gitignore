@@ -16,3 +16,4 @@ AGENTS.md
 
 ### Mobile web — credentials (never commit) ###
 web/config.js
+.mcp.json
