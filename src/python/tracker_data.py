@@ -11,11 +11,13 @@ Writes JSON to ~/.cache/claude-codex-tracker/data.json for the Swift menu bar ap
 import json
 import logging
 import os
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from tempfile import NamedTemporaryFile
 
+import fcntl
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -31,6 +33,7 @@ REFRESH_INTERVAL = 300      # 5 minutes
 REFRESH_AT_LIMIT = 60       # 1 minute when at 100%
 COOKIE_CACHE_TTL = 3600     # re-read browser cookies once per hour
 OUTPUT_FILE = os.path.expanduser("~/.cache/claude-codex-tracker/data.json")
+LOCK_FILE = os.path.expanduser("~/.cache/claude-codex-tracker/fetcher.lock")
 
 CLAUDE_ORGS_API = "https://claude.ai/api/organizations"
 SUPABASE_CONFIG_PATH = os.path.expanduser("~/.claude-tracker/supabase.json")
@@ -44,6 +47,23 @@ _claude_cookie_cache = None
 _claude_cookie_cache_time = 0
 _chatgpt_cookie_cache = None
 _chatgpt_cookie_cache_time = 0
+_lock_handle = None
+
+
+def acquire_single_instance_lock():
+    global _lock_handle
+    os.makedirs(os.path.dirname(LOCK_FILE), mode=0o700, exist_ok=True)
+    _lock_handle = open(LOCK_FILE, "w", encoding="utf-8")
+    try:
+        fcntl.flock(_lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        _log.error("another tracker_data.py instance is already running")
+        sys.exit(0)
+
+    _lock_handle.seek(0)
+    _lock_handle.truncate()
+    _lock_handle.write(str(os.getpid()))
+    _lock_handle.flush()
 
 
 def now_str():
@@ -164,6 +184,11 @@ def default_block(status):
         "session_pct": "—",
         "weekly_reset": "—",
         "session_reset": "—",
+        "weekly_capped": False,
+        "session_effective_pct": "—",
+        "session_effective_used_pct": None,
+        "session_effective_remaining_pct": None,
+        "session_effective_reset": "—",
         "weekly_used_pct": None,
         "session_used_pct": None,
         "weekly_remaining_pct": None,
@@ -338,6 +363,9 @@ def fetch_claude_usage(consecutive_failures):
         design_used = safe_int(design_window.get("utilization"), 0) if design_window else None
         session_remaining = max(0, 100 - session_used)
         weekly_remaining = max(0, 100 - weekly_used)
+        weekly_capped = weekly_used >= 100
+        session_effective_used = 100 if weekly_capped else session_used
+        session_effective_remaining = max(0, 100 - session_effective_used)
 
         block = {
             "status": "Live",
@@ -346,6 +374,11 @@ def fetch_claude_usage(consecutive_failures):
             "weekly_pct": percent_str(weekly_used),
             "session_reset": format_reset_iso(session_window.get("resets_at", "")),
             "weekly_reset": format_reset_iso(weekly_window.get("resets_at", "")),
+            "weekly_capped": weekly_capped,
+            "session_effective_pct": percent_str(session_effective_used),
+            "session_effective_used_pct": session_effective_used,
+            "session_effective_remaining_pct": session_effective_remaining,
+            "session_effective_reset": format_reset_iso(weekly_window.get("resets_at", "")) if weekly_capped else format_reset_iso(session_window.get("resets_at", "")),
             "session_used_pct": session_used,
             "weekly_used_pct": weekly_used,
             "session_remaining_pct": session_remaining,
@@ -417,6 +450,9 @@ def fetch_codex_usage(consecutive_failures):
         weekly_used = safe_int(secondary.get("used_percent"), 0)
         session_remaining = max(0, 100 - session_used)
         weekly_remaining = max(0, 100 - weekly_used)
+        weekly_capped = weekly_used >= 100
+        session_effective_used = 100 if weekly_capped else session_used
+        session_effective_remaining = max(0, 100 - session_effective_used)
 
         block = {
             "status": "Live",
@@ -425,6 +461,11 @@ def fetch_codex_usage(consecutive_failures):
             "weekly_pct": percent_str(weekly_used),
             "session_reset": format_reset_epoch(primary.get("reset_at")),
             "weekly_reset": format_reset_epoch(secondary.get("reset_at")),
+            "weekly_capped": weekly_capped,
+            "session_effective_pct": percent_str(session_effective_used),
+            "session_effective_used_pct": session_effective_used,
+            "session_effective_remaining_pct": session_effective_remaining,
+            "session_effective_reset": format_reset_epoch(secondary.get("reset_at")) if weekly_capped else format_reset_epoch(primary.get("reset_at")),
             "session_used_pct": session_used,
             "weekly_used_pct": weekly_used,
             "session_remaining_pct": session_remaining,
@@ -471,6 +512,8 @@ def push_to_supabase(payload):
 
 
 def main():
+    acquire_single_instance_lock()
+
     claude_block = default_block("Starting...")
     codex_block = default_block("Starting...")
     write_data(**build_payload(claude_block, codex_block))

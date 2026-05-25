@@ -6,6 +6,7 @@ INSTALL_BIN="${HOME}/.local/bin/${BINARY_NAME}"
 INSTALL_DIR="${HOME}/.claude-tracker"
 DIST="dist"
 SWIFT_SRC="src/native/Launcher.swift"
+SWIFT_STARTER_SRC="src/native/AppStarter.swift"
 PYTHON_SRC="src/python/tracker_data.py"
 APP_NAME="Claude_Codex_Tracker.app"
 APP_DIR="/Applications/${APP_NAME}"
@@ -98,16 +99,12 @@ echo "▶ Creating launcher app in ${APP_DIR}..."
 rm -rf "${APP_DIR}"
 mkdir -p "${APP_DIR}/Contents/MacOS" "${APP_RESOURCES}"
 cp "${ICON_ICNS}" "${APP_RESOURCES}/AppIcon.icns"
-cat > "${APP_BIN}" << 'STARTER'
-#!/bin/bash
-set -e
-UID_VAL=$(id -u)
-PLIST_PATH="$HOME/Library/LaunchAgents/com.sakthivel.claudetracker.plist"
-launchctl kickstart -k "gui/${UID_VAL}/com.sakthivel.claudetracker" 2>/dev/null || {
-    launchctl unload "$PLIST_PATH" 2>/dev/null || true
-    launchctl load "$PLIST_PATH"
-}
-STARTER
+echo "▶ Compiling Dock launcher..."
+xcrun swiftc \
+    -target arm64-apple-macosx13.0 \
+    -O \
+    "${SWIFT_STARTER_SRC}" \
+    -o "${APP_BIN}"
 chmod +x "${APP_BIN}"
 
 cat > "${APP_PLIST}" << 'APPINFO'

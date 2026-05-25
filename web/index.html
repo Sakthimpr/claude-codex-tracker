@@ -391,19 +391,20 @@ function render(d) {
   document.getElementById('claude-plan').textContent  = c.plan_label || '—';
   document.getElementById('codex-plan').textContent   = x.plan_label || '—';
 
-  // Used pcts — always drive colors, dots, and warning banners
-  const cSUsed = c.session_used_pct  ?? pctInt(c.session_pct);
+  const cSUsed = c.session_effective_used_pct  ?? c.session_used_pct  ?? pctInt(c.session_pct);
   const cWUsed = c.weekly_used_pct   ?? pctInt(c.weekly_pct);
   const cDUsed = pctInt(c.design_weekly_pct);
-  const xSUsed = x.session_used_pct  ?? pctInt(x.session_pct);
+  const xSUsed = x.session_effective_used_pct  ?? x.session_used_pct  ?? pctInt(x.session_pct);
   const xWUsed = x.weekly_used_pct   ?? pctInt(x.weekly_pct);
+  const cSReset = c.session_effective_reset || c.session_reset;
+  const xSReset = x.session_effective_reset || x.session_reset;
 
   // Display pcts — switch between used and remaining
   const rem = (used, storedRemaining) => storedRemaining ?? (used !== null ? 100 - used : null);
-  const cSPct = showRemaining ? rem(cSUsed, c.session_remaining_pct)  : cSUsed;
+  const cSPct = showRemaining ? rem(cSUsed, c.session_effective_remaining_pct ?? c.session_remaining_pct)  : cSUsed;
   const cWPct = showRemaining ? rem(cWUsed, c.weekly_remaining_pct)   : cWUsed;
-  const cDPct = showRemaining ? rem(cDUsed, null)                     : cDUsed;
-  const xSPct = showRemaining ? rem(xSUsed, x.session_remaining_pct)  : xSUsed;
+  const cDPct = showRemaining ? rem(cDUsed, null)                    : cDUsed;
+  const xSPct = showRemaining ? rem(xSUsed, x.session_effective_remaining_pct ?? x.session_remaining_pct)  : xSUsed;
   const xWPct = showRemaining ? rem(xWUsed, x.weekly_remaining_pct)   : xWUsed;
 
   // Dial arc fill uses display pct; arc color always follows used pct
@@ -420,9 +421,9 @@ function render(d) {
   document.getElementById('cx-current-pct').textContent   = fmt(xSPct);
   document.getElementById('cx-weekly-pct').textContent    = fmt(xWPct);
 
-  document.getElementById('cd-current-reset').textContent    = (c.session_reset || '').replace('Resets', '↻');
+  document.getElementById('cd-current-reset').textContent    = (cSReset || '').replace('Resets', '↻');
   document.getElementById('claude-weekly-reset').textContent = (c.weekly_reset  || '').replace('Resets', '↻');
-  document.getElementById('cx-current-reset').textContent    = (x.session_reset || '').replace('Resets', '↻');
+  document.getElementById('cx-current-reset').textContent    = (xSReset || '').replace('Resets', '↻');
   document.getElementById('cx-weekly-reset').textContent     = (x.weekly_reset  || '').replace('Resets', '↻');
 
   // Dots and colors always based on used pct

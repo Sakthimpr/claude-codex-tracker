@@ -664,6 +664,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
         buildStatusItem()
+        ensureStatusDotPopover()
         startPolling()
         setupGlobalMouseMonitor()
         DispatchQueue.global(qos: .background).asyncAfter(deadline: .now() + 0.5) {
@@ -1352,9 +1353,17 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         statusDotRows["cl_design"] = clDesignRow
         statusDotRows["co_5h"]     = co5hRow
         statusDotRows["co_weekly"] = coWRow
+        for row in statusDotRows.values {
+            row.isHidden = true
+            row.needsLayout = true
+            row.layoutSubtreeIfNeeded()
+        }
+        content.needsLayout = true
+        content.layoutSubtreeIfNeeded()
 
         let vc = NSViewController()
         vc.view = content
+        vc.preferredContentSize = content.frame.size
 
         let pop = NSPopover()
         pop.behavior = .applicationDefined
@@ -1378,7 +1387,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
 
     func showStatusDotPopover(dotRect: NSRect, forKey key: String) {
         ensureStatusDotPopover()
-        for (k, row) in statusDotRows { row.isHidden = (k != key) }
         refreshStatusDotPopoverRows()
         guard let pop = statusDotPopover, let button = statusItem.button else { return }
 
@@ -1396,9 +1404,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         // +10 safety for font-fallback rounding on Unicode symbols like ↻
         let newW = max(160, ceil(measuredW) + 36)
         if let content = pop.contentViewController?.view {
-            content.frame = NSRect(x: 0, y: 0, width: newW, height: 44)
-            statusDotRows[key]?.frame = NSRect(x: 7, y: 11, width: newW - 14, height: 22)
-            pop.contentSize = content.frame.size
+            let contentSize = NSSize(width: newW, height: 44)
+            content.frame = NSRect(origin: .zero, size: contentSize)
+            for (k, row) in statusDotRows {
+                row.isHidden = (k != key)
+                row.frame = NSRect(x: 7, y: 11, width: newW - 14, height: 22)
+                row.needsLayout = true
+                row.layoutSubtreeIfNeeded()
+            }
+            content.needsLayout = true
+            content.layoutSubtreeIfNeeded()
+            pop.contentSize = contentSize
+            pop.contentViewController?.preferredContentSize = contentSize
         }
 
         if pop.isShown { pop.close() }
@@ -1994,6 +2011,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     }
 
     func usedRemainingPcts(from block: [String: Any], weekly: Bool = false) -> (used: String, remaining: String) {
+        if !weekly {
+            if let n = block["session_effective_used_pct"] as? NSNumber {
+                let used = "\(n.intValue)%"
+                if let r = block["session_effective_remaining_pct"] as? NSNumber {
+                    return (used, "\(r.intValue)%")
+                }
+                return (used, "\(max(0, 100 - n.intValue))%")
+            }
+            if let s = block["session_effective_pct"] as? String, s != "—" {
+                let used = s
+                if let n = pctInt(s) {
+                    return (used, "\(max(0, 100 - n))%")
+                }
+                return (used, "—")
+            }
+        }
         let usedKey = weekly ? "weekly_pct" : "session_pct"
         let remainKey = weekly ? "weekly_remaining_pct" : "session_remaining_pct"
 
@@ -2351,7 +2384,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let claude = usageBlock(from: payload, key: "claude", fallbackToRoot: true)
         let codex = usageBlock(from: payload, key: "codex")
 
-        let cSReset  = stringValue(claude["session_reset"])
+        let cSReset  = stringValue(claude["session_effective_reset"], fallback: stringValue(claude["session_reset"]))
         let cWReset  = stringValue(claude["weekly_reset"])
         let cDWReset = stringValue(claude["design_weekly_reset"])
         let cDWPct   = stringValue(claude["design_weekly_pct"])
@@ -2359,7 +2392,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let cStatus = stringValue(claude["status"])
 
         let oWReset = stringValue(codex["weekly_reset"])
-        let oSReset = stringValue(codex["session_reset"])
+        let oSReset = stringValue(codex["session_effective_reset"], fallback: stringValue(codex["session_reset"]))
         let oPlanRaw = stringValue(codex["plan_label"], fallback: "PLUS")
         let oStatus = stringValue(codex["status"], fallback: codex.isEmpty ? "Waiting for data..." : "—")
 
