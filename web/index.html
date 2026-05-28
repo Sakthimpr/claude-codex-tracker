@@ -217,11 +217,6 @@
         <div class="dial-pct" id="cd-allmodels-pct">—</div>
         <div class="dial-label">All Models<span class="dial-sublabel">Weekly</span></div>
       </div>
-      <div class="dial-wrap" id="cd-design">
-        <svg width="90" height="90" viewBox="0 0 90 90"></svg>
-        <div class="dial-pct" id="cd-design-pct">—</div>
-        <div class="dial-label">Design<span class="dial-sublabel">Weekly</span></div>
-      </div>
     </div>
     <div style="display:flex; align-items:center; margin-top:10px;">
       <div style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; color:var(--muted);">
@@ -393,8 +388,7 @@ function render(d) {
 
   const cSUsed = c.session_effective_used_pct  ?? c.session_used_pct  ?? pctInt(c.session_pct);
   const cWUsed = c.weekly_used_pct   ?? pctInt(c.weekly_pct);
-  const cDUsed = pctInt(c.design_weekly_pct);
-  const xSUsed = x.session_effective_used_pct  ?? x.session_used_pct  ?? pctInt(x.session_pct);
+const xSUsed = x.session_effective_used_pct  ?? x.session_used_pct  ?? pctInt(x.session_pct);
   const xWUsed = x.weekly_used_pct   ?? pctInt(x.weekly_pct);
   const cSReset = c.session_effective_reset || c.session_reset;
   const xSReset = x.session_effective_reset || x.session_reset;
@@ -403,22 +397,19 @@ function render(d) {
   const rem = (used, storedRemaining) => storedRemaining ?? (used !== null ? 100 - used : null);
   const cSPct = showRemaining ? rem(cSUsed, c.session_effective_remaining_pct ?? c.session_remaining_pct)  : cSUsed;
   const cWPct = showRemaining ? rem(cWUsed, c.weekly_remaining_pct)   : cWUsed;
-  const cDPct = showRemaining ? rem(cDUsed, null)                    : cDUsed;
-  const xSPct = showRemaining ? rem(xSUsed, x.session_effective_remaining_pct ?? x.session_remaining_pct)  : xSUsed;
+const xSPct = showRemaining ? rem(xSUsed, x.session_effective_remaining_pct ?? x.session_remaining_pct)  : xSUsed;
   const xWPct = showRemaining ? rem(xWUsed, x.weekly_remaining_pct)   : xWUsed;
 
   // Dial arc fill uses display pct; arc color always follows used pct
   drawDial(document.querySelector('#cd-current svg'),   cSPct, 90,  cSUsed);
   drawDial(document.querySelector('#cd-allmodels svg'), cWPct, 90,  cWUsed);
-  drawDial(document.querySelector('#cd-design svg'),    cDPct, 90,  cDUsed);
-  drawDial(document.querySelector('#cx-current svg'),   xSPct, 110, xSUsed);
+drawDial(document.querySelector('#cx-current svg'),   xSPct, 110, xSUsed);
   drawDial(document.querySelector('#cx-weekly svg'),    xWPct, 110, xWUsed);
 
   const fmt = v => v !== null ? v + '%' : '—';
   document.getElementById('cd-current-pct').textContent   = fmt(cSPct);
   document.getElementById('cd-allmodels-pct').textContent = fmt(cWPct);
-  document.getElementById('cd-design-pct').textContent    = fmt(cDPct);
-  document.getElementById('cx-current-pct').textContent   = fmt(xSPct);
+document.getElementById('cx-current-pct').textContent   = fmt(xSPct);
   document.getElementById('cx-weekly-pct').textContent    = fmt(xWPct);
 
   document.getElementById('cd-current-reset').textContent    = (cSReset || '').replace('Resets', '↻');
@@ -428,18 +419,17 @@ function render(d) {
 
   // Dots and colors always based on used pct
   setDot('cd-current-dot', cSUsed);
-  setDot('cd-weekly-dot',  cWUsed !== null || cDUsed !== null ? Math.max(cWUsed ?? 0, cDUsed ?? 0) : null);
+  setDot('cd-weekly-dot',  cWUsed);
   setDot('cx-current-dot', xSUsed);
   setDot('cx-weekly-dot',  xWUsed);
 
   document.getElementById('cd-current-pct').style.color   = dialColor(cSUsed);
   document.getElementById('cd-allmodels-pct').style.color  = dialColor(cWUsed);
-  document.getElementById('cd-design-pct').style.color    = dialColor(cDUsed);
-  document.getElementById('cx-current-pct').style.color   = dialColor(xSUsed);
+document.getElementById('cx-current-pct').style.color   = dialColor(xSUsed);
   document.getElementById('cx-weekly-pct').style.color    = dialColor(xWUsed);
 
   checkWarning(document.getElementById('claude-warning'),
-    {pct: cSUsed, label: 'Session'}, {pct: cWUsed, label: 'All Models'}, {pct: cDUsed, label: 'Design'});
+    {pct: cSUsed, label: 'Session'}, {pct: cWUsed, label: 'All Models'});
   checkWarning(document.getElementById('codex-warning'),
     {pct: xSUsed, label: 'Current'}, {pct: xWUsed, label: 'Weekly'});
 
