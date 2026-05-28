@@ -97,9 +97,21 @@ Menu bar app (Swift + Python) that shows Claude and Codex usage side-by-side.
 
 ---
 
+### VULN-07 (High) — Multiple orphan daemon processes caused terminal hang
+**What happened:** `tracker_data.py` had no single-instance guard. Each build or LaunchAgent restart spawned a new daemon without killing the previous one. Over time ~80 orphan processes accumulated, exhausting system resources and hanging the terminal.
+
+**Fix applied:** `acquire_single_instance_lock()` uses `fcntl.flock` on `~/.cache/claude-codex-tracker/fetcher.lock` (exclusive, non-blocking). Any second instance detects the held lock and exits immediately with a log entry. The lock file also stores the owning PID for diagnostics.
+
+**Rule:** The daemon must call `acquire_single_instance_lock()` at startup before doing any work. Never remove or weaken this guard. If the daemon seems "not running", check the lock file PID before spawning a new instance — the old one may still hold the lock.
+
+**Diagnosis:** If orphan processes accumulate again: `pgrep -f tracker_data.py | wc -l` to count, `cat ~/.cache/claude-codex-tracker/fetcher.lock` to see lock holder PID, `pkill -f "${INSTALL_DIR}/tracker_data\.py"` to clean up (anchored path, per VULN-05 rule).
+
+---
+
 ## Anti-Patterns (Never Repeat)
 - Do not hardcode Supabase URLs or keys anywhere in committed files
 - Do not use `except Exception: pass` — always log
 - Do not use `requests.Session()` directly — always `_make_session_with_retry()`
 - Do not use `pkill -f <partial-name>` in build scripts
 - Do not return silently from `loadData()` on any error path
+- Do not start `tracker_data.py` without `acquire_single_instance_lock()` — orphan processes accumulate silently and can hang the terminal
