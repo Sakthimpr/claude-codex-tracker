@@ -955,7 +955,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         let (cdi, cdv) = makeDialPairRow(height: 116, hoverGroup: "claude")
         claudeDialItem = cdi
         claudeDialView = cdv
-        cdv.showThird   = true
+        cdv.showThird   = false
         cdv.showDivider = true
         appMenu.addItem(cdi)
         appMenu.addItem(makeSpacerRow(height: 4, hoverGroup: "claude"))
@@ -2441,9 +2441,6 @@ let oSDot  = oSEffectiveView != "—" ? colorDotForValue(oSEffectiveView, isRema
         claudeDialView.rightWarning  = isCriticalState(cWView, isRemaining: showRemaining)
         claudeDialView.rightGlow     = claudeWeeklyCapped ? 0.20 : 1.0
         claudeDialView.rightReset    = weeklyCountdownPhrase(cWReset) + " · " + weeklyClockPhrase(cWReset)
-
-        claudeDialView.thirdFraction = 0.0
-        claudeDialView.thirdGlow     = 0.0
 
 codexDialView.leftFraction   = CGFloat(pctInt(oSEffectiveView) ?? 0) / 100.0
         codexDialView.leftColor      = barColorForValue(oSEffectiveView, isRemaining: showRemaining)
