@@ -548,6 +548,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     var statusItem: NSStatusItem!
     var appMenu: NSMenu!
     var pythonProcess: Process?
+    var isPythonLaunching = false
     var isQuitting = false
     var showRemaining = false
     var toggleUsageModeItem: NSMenuItem!
@@ -1517,6 +1518,8 @@ statusDotRows["co_5h"]     = co5hRow
 
     func launchPython() {
         if let p = pythonProcess, p.isRunning { return }
+        if isPythonLaunching { return }
+        isPythonLaunching = true
 
         let binaryDir = (Bundle.main.executablePath! as NSString).deletingLastPathComponent
         let candidates = [
@@ -1559,14 +1562,17 @@ statusDotRows["co_5h"]     = co5hRow
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                 if !self.isQuitting {
                     self.pythonProcess = nil
+                    self.isPythonLaunching = false
                     self.launchPython()
                 }
             }
         }
         do {
             try pythonProcess?.run()
+            isPythonLaunching = false
         } catch {
             pythonProcess = nil
+            isPythonLaunching = false
             if let log = FileHandle(forWritingAtPath: "/tmp/claude_tracker_python.log") {
                 log.seekToEndOfFile()
                 let line = "[\(Date())] launch failed: \(error.localizedDescription)\n"
