@@ -98,13 +98,19 @@ Menu bar app (Swift + Python) that shows Claude and Codex usage side-by-side.
 ---
 
 ### VULN-07 (High) — Multiple orphan daemon processes caused terminal hang
-**What happened:** `tracker_data.py` had no single-instance guard. Each build or LaunchAgent restart spawned a new daemon without killing the previous one. Over time ~80 orphan processes accumulated, exhausting system resources and hanging the terminal.
+**What happened (first occurrence):** `tracker_data.py` had no single-instance guard. Each build or LaunchAgent restart spawned a new daemon without killing the previous one. Over time ~80 orphan processes accumulated, exhausting system resources and hanging the terminal.
 
-**Fix applied:** `acquire_single_instance_lock()` uses `fcntl.flock` on `~/.cache/claude-codex-tracker/fetcher.lock` (exclusive, non-blocking). Any second instance detects the held lock and exits immediately with a log entry. The lock file also stores the owning PID for diagnostics.
+**First fix:** `acquire_single_instance_lock()` uses `fcntl.flock` on `~/.cache/claude-codex-tracker/fetcher.lock`. Any second Python instance hits the lock and calls `sys.exit(0)`.
 
-**Rule:** The daemon must call `acquire_single_instance_lock()` at startup before doing any work. Never remove or weaken this guard. If the daemon seems "not running", check the lock file PID before spawning a new instance — the old one may still hold the lock.
+**Why it recurred:** The Python lock was necessary but not sufficient. `sys.exit(0)` triggers Swift's `terminationHandler`, which reschedules `launchPython()` after 2 seconds — not knowing the exit was intentional. Meanwhile `ensureFetcherHealthy()` (fires every 60s) could also call `launchPython()` concurrently. Multiple handlers queued on the main thread each set `pythonProcess = nil` then called `launchPython()`, bypassing the `p.isRunning` check. Result: N simultaneous spawns → each hits the Python lock → exits 0 → triggers another handler → infinite cascade.
 
-**Diagnosis:** If orphan processes accumulate again: `pgrep -f tracker_data.py | wc -l` to count, `cat ~/.cache/claude-codex-tracker/fetcher.lock` to see lock holder PID, `pkill -f "${INSTALL_DIR}/tracker_data\.py"` to clean up (anchored path, per VULN-05 rule).
+**Root cause:** The Swift spawn path had no concurrency guard. The Python lock capped *running* processes at 1 but didn't stop the *spawn rate*.
+
+**Second fix (complete fix):** `isPythonLaunching: Bool` flag in `Launcher.swift` gates the entry to `launchPython()`. Set to `true` on entry, cleared after `run()` succeeds or on error, reset to `false` in `terminationHandler` before the 2-second restart. Only one spawn can ever be in-flight at a time.
+
+**Rule:** Both guards must stay in place — the Swift flag prevents the cascade, the Python lock is the backstop. Never remove either.
+
+**Diagnosis:** `pgrep -f tracker_data.py | wc -l` to count; if > 1, the Swift guard is broken. `cat ~/.cache/claude-codex-tracker/fetcher.lock` to see lock holder PID.
 
 ---
 
@@ -115,3 +121,4 @@ Menu bar app (Swift + Python) that shows Claude and Codex usage side-by-side.
 - Do not use `pkill -f <partial-name>` in build scripts
 - Do not return silently from `loadData()` on any error path
 - Do not start `tracker_data.py` without `acquire_single_instance_lock()` — orphan processes accumulate silently and can hang the terminal
+- Do not rely solely on a Python-level lock to prevent spawning — if Swift's `terminationHandler` reschedules unconditionally, it will cascade. The Swift `isPythonLaunching` flag is the primary guard.
