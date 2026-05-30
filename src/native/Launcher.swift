@@ -1598,16 +1598,22 @@ statusDotRows["co_5h"]     = co5hRow
         if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
            let mtime = attrs[.modificationDate] as? Date {
             let age = Date().timeIntervalSince(mtime)
-            if age > staleThreshold || !isRunning {
+            if age > staleThreshold && isRunning {
+                // Data stale but process thinks it's running — kill cleanly without
+                // triggering the terminationHandler (which would spawn a new process
+                // while the old one is still dying and holding the lock).
+                pythonProcess?.terminationHandler = nil
                 pythonProcess?.terminate()
                 pythonProcess = nil
                 lastDataMTime = nil
+            }
+            if !isRunning && !isPythonLaunching {
                 launchPython()
             }
             return
         }
 
-        if !isRunning {
+        if !isRunning && !isPythonLaunching {
             launchPython()
         }
     }
