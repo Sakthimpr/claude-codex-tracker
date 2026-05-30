@@ -619,6 +619,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
     var activeStatusDotKey: String?
     var pendingPopoverHide: DispatchWorkItem?
     var globalMouseMonitor: Any?
+    var lastMousePoint: NSPoint = .zero
     var sharedDataPath = NSHomeDirectory() + "/.cache/claude-codex-tracker/data.json"
 
     private let shortClockRegex = try! NSRegularExpression(pattern: #"\b\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AP]M)?\b"#)
@@ -1411,7 +1412,14 @@ statusDotRows["co_5h"]     = co5hRow
 
     func setupGlobalMouseMonitor() {
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
-            DispatchQueue.main.async { self?.handleGlobalMouseMove() }
+            guard let self else { return }
+            let pt = NSEvent.mouseLocation
+            // Only dispatch if mouse moved more than 4px — skips micro-movements
+            let dx = pt.x - self.lastMousePoint.x
+            let dy = pt.y - self.lastMousePoint.y
+            guard dx * dx + dy * dy > 16 else { return }
+            self.lastMousePoint = pt
+            DispatchQueue.main.async { self.handleGlobalMouseMove() }
         }
     }
 
@@ -1584,7 +1592,7 @@ statusDotRows["co_5h"]     = co5hRow
 
     func startPolling() {
         loadData()
-        Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: 90, repeats: true) { [weak self] _ in
             self?.loadData()
             self?.ensureFetcherHealthy()
         }
