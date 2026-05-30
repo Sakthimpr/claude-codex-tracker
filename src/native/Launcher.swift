@@ -1592,7 +1592,7 @@ statusDotRows["co_5h"]     = co5hRow
 
     func startPolling() {
         loadData()
-        Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: 180, repeats: true) { [weak self] _ in
             self?.loadData()
             self?.ensureFetcherHealthy()
         }

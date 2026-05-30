@@ -29,7 +29,7 @@ logging.basicConfig(
 )
 _log = logging.getLogger(__name__)
 
-REFRESH_INTERVAL = 300      # 5 minutes
+REFRESH_INTERVAL = 180      # 3 minutes
 REFRESH_AT_LIMIT = 60       # 1 minute when at 100%
 COOKIE_CACHE_TTL = 3600     # re-read browser cookies once per hour
 OUTPUT_FILE = os.path.expanduser("~/.cache/claude-codex-tracker/data.json")
