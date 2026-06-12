@@ -24,7 +24,7 @@
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
     font-size: 14px;
     min-height: 100dvh;
-    padding: 40px 12px 32px;
+    padding: 40px 12px max(14px, env(safe-area-inset-bottom));
     display: flex;
     flex-direction: column;
   }
@@ -47,8 +47,8 @@
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 20px 16px 22px;
-    margin-bottom: 16px;
+    padding: 22px 16px 26px;
+    margin-bottom: 14px;
     display: flex;
     flex-direction: column;
   }
@@ -56,7 +56,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
+    margin-bottom: 18px;
   }
   .card-title {
     font-size: 15px;
@@ -104,25 +104,16 @@
     overflow: visible;
   }
   .dial-label {
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.15;
     color: var(--muted);
-    margin-top: 4px;
+    margin-top: 6px;
     text-align: center;
-  }
-  .dial-sublabel {
-    display: block;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text);
-    opacity: 0.82;
-    margin-top: 2px;
-  }
-  .dial-sublabel-placeholder {
-    visibility: hidden;
+    white-space: nowrap;
   }
   .dial-pct {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     text-align: center;
@@ -138,10 +129,26 @@
   .status-row {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-top: 10px;
-    font-size: 13px;
+    gap: 7px;
+    margin-top: 12px;
+    font-size: 14px;
     color: var(--muted);
+    white-space: nowrap;
+  }
+  .reset-row {
+    display: flex;
+    align-items: center;
+    margin-top: 14px;
+  }
+  .reset-cell {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-size: 14px;
+    color: var(--muted);
+    white-space: nowrap;
   }
   .status-dot {
     width: 6px; height: 6px;
@@ -160,17 +167,17 @@
   }
   .btn-row {
     display: flex;
-    gap: 10px;
-    margin-top: 20px;
+    gap: 12px;
+    margin-top: 14px;
   }
   .refresh-btn, .toggle-btn {
     flex: 1;
-    padding: 12px;
+    padding: 14px 12px;
     background: rgba(255,255,255,0.06);
     border: 1px solid var(--border);
     border-radius: 10px;
     color: var(--text);
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
     cursor: pointer;
     text-align: center;
@@ -183,6 +190,21 @@
   .refresh-btn:active, .toggle-btn:active { background: rgba(255,255,255,0.12); }
   @media (display-mode: standalone) {
     body { padding-top: 70px; }
+  }
+  @media (max-width: 480px) and (min-height: 780px) {
+    .card {
+      flex: 1 1 0;
+    }
+    .card-body {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+  @media (max-height: 760px) {
+    body { padding-top: 28px; }
+    .card { padding-top: 18px; padding-bottom: 22px; }
+    .card-header { margin-bottom: 12px; }
+    .btn-row { margin-top: 18px; }
   }
   #error-msg {
     color: #ff8080;
@@ -209,20 +231,20 @@
       <div class="dial-wrap" id="cd-current">
         <svg width="90" height="90" viewBox="0 0 90 90"></svg>
         <div class="dial-pct" id="cd-current-pct">—</div>
-        <div class="dial-label">Current<span class="dial-sublabel dial-sublabel-placeholder" aria-hidden="true">&nbsp;</span></div>
+        <div class="dial-label">Current</div>
       </div>
       <div class="dial-wrap" id="cd-allmodels">
         <svg width="90" height="90" viewBox="0 0 90 90"></svg>
         <div class="dial-pct" id="cd-allmodels-pct">—</div>
-        <div class="dial-label">All Models<span class="dial-sublabel">Weekly</span></div>
+        <div class="dial-label">All Models Weekly</div>
       </div>
     </div>
-    <div style="display:flex; align-items:center; margin-top:10px;">
-      <div style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; color:var(--muted);">
+    <div class="reset-row">
+      <div class="reset-cell">
         <span class="status-dot" id="cd-current-dot"></span>
         <span id="cd-current-reset"></span>
       </div>
-      <div style="flex:2; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; color:rgba(232,232,236,0.88);">
+      <div class="reset-cell">
         <span class="status-dot" id="cd-weekly-dot"></span>
         <span id="claude-weekly-reset"></span>
       </div>
