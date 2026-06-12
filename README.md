@@ -139,7 +139,7 @@ rm -rf /Applications/Claude_Codex_Tracker.app
 
 View your usage on any device — phone, tablet, or browser — via a hosted web page that mirrors the Mac app dials in real time.
 
-**How it works:** The Mac tracker pushes a snapshot to [Supabase](https://supabase.com) after every fetch. A static web page (deployed to [Vercel](https://vercel.com) or [Netlify](https://netlify.com)) reads from Supabase and renders the dials. Data is at most 5 minutes old.
+**How it works:** The Mac tracker pushes a snapshot to [Supabase](https://supabase.com) after every fetch. A static web page (deployed to [Vercel](https://vercel.com) or [Netlify](https://netlify.com)) reads from Supabase and renders the dials. Data is at most 2 minutes old.
 
 ### Setup
 
@@ -211,10 +211,10 @@ Open the deployed URL in Safari → tap the Share button → **Add to Home Scree
 | Data | `src/python/tracker_data.py` | Background daemon — fetches usage from APIs |
 | Shared state | `~/.cache/claude-codex-tracker/data.json` | Written by Python, read by Swift every 10s |
 | Mobile sync | Supabase `tracker_snapshot` table | Python pushes JSON after every fetch cycle |
-| Mobile UI | `web/index.html` | Static page — SVG dials, auto-refreshes every 60s |
+| Mobile UI | `web/index.html` | Static page — SVG dials, auto-refreshes every 120s |
 
 - **Auth:** Claude's API accepts cookie-authenticated requests directly. Codex requires a Bearer token obtained from `chatgpt.com/api/auth/session` using your Chrome session.
-- **Refresh intervals:** Every 5 minutes normally, every 1 minute when at the usage limit.
+- **Refresh intervals:** Every 2 minutes normally, every 1 minute when at the usage limit.
 
 ---
 

@@ -1592,7 +1592,7 @@ statusDotRows["co_5h"]     = co5hRow
 
     func startPolling() {
         loadData()
-        Timer.scheduledTimer(withTimeInterval: 180, repeats: true) { [weak self] _ in
+        Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
             self?.loadData()
             self?.ensureFetcherHealthy()
         }
@@ -1601,7 +1601,7 @@ statusDotRows["co_5h"]     = co5hRow
     func ensureFetcherHealthy() {
         let path = sharedDataPath
         let isRunning = pythonProcess?.isRunning ?? false
-        let staleThreshold: TimeInterval = 420 // must be greater than normal Python 5-min refresh
+        let staleThreshold: TimeInterval = 300 // must be greater than normal Python 2-min refresh
 
         if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
            let mtime = attrs[.modificationDate] as? Date {
