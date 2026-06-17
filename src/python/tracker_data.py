@@ -176,9 +176,11 @@ def get_chatgpt_cookies(force=False):
     return jar
 
 
-def default_block(status):
+def default_block(status, needs_login=False, action_hint=""):
     return {
         "status": status,
+        "needs_login": needs_login,
+        "action_hint": action_hint,
         "plan_label": "—",
         "weekly_pct": "—",
         "session_pct": "—",
@@ -198,6 +200,10 @@ def default_block(status):
         "design_weekly_reset": "—",
         "last_updated": now_str(),
     }
+
+
+def login_block(status, action_hint):
+    return default_block(status, needs_login=True, action_hint=action_hint)
 
 
 def build_payload(claude_block, codex_block):
@@ -311,7 +317,10 @@ def fetch_claude_usage(consecutive_failures):
     try:
         cookies = get_claude_cookies(force=(consecutive_failures >= 2))
         if not cookies:
-            return default_block("Log in to claude.ai in Chrome first"), False, consecutive_failures + 1
+            return login_block(
+                "Log in to claude.ai in Chrome first",
+                "Sign in to claude.ai in Chrome, then Refresh now.",
+            ), False, consecutive_failures + 1
 
         session = _make_session_with_retry()
         session.cookies = cookies
@@ -340,7 +349,10 @@ def fetch_claude_usage(consecutive_failures):
         )
 
         if resp.status_code != 200:
-            return default_block("Session expired — open claude.ai in Chrome"), False, consecutive_failures + 1
+            return login_block(
+                "Session expired — open claude.ai in Chrome",
+                "Sign in to claude.ai in Chrome, then Refresh now.",
+            ), False, consecutive_failures + 1
 
         data = resp.json()
         org_resp = session.get(
@@ -400,7 +412,10 @@ def fetch_codex_usage(consecutive_failures):
     try:
         cookies = get_chatgpt_cookies(force=(consecutive_failures >= 2))
         if not cookies:
-            return default_block("Log in to chatgpt.com in Chrome first"), False, consecutive_failures + 1
+            return login_block(
+                "Log in to chatgpt.com in Chrome first",
+                "Sign in to chatgpt.com in Chrome, then Refresh now.",
+            ), False, consecutive_failures + 1
 
         session = _make_session_with_retry()
         session.cookies = cookies
@@ -411,11 +426,17 @@ def fetch_codex_usage(consecutive_failures):
             timeout=20,
         )
         if session_resp.status_code != 200:
-            return default_block("Auth expired — open chatgpt.com in Chrome"), False, consecutive_failures + 1
+            return login_block(
+                "Auth expired — open chatgpt.com in Chrome",
+                "Sign in to chatgpt.com in Chrome, then Refresh now.",
+            ), False, consecutive_failures + 1
 
         token = (session_resp.json() or {}).get("accessToken")
         if not token:
-            return default_block("Auth token missing — open chatgpt.com"), False, consecutive_failures + 1
+            return login_block(
+                "Auth token missing — open chatgpt.com",
+                "Sign in to chatgpt.com in Chrome, then Refresh now.",
+            ), False, consecutive_failures + 1
 
         usage_resp = session.get(
             CODEX_USAGE_API,
@@ -434,7 +455,10 @@ def fetch_codex_usage(consecutive_failures):
         )
 
         if usage_resp.status_code == 401:
-            return default_block("Unauthorized — refresh ChatGPT login"), False, consecutive_failures + 1
+            return login_block(
+                "Unauthorized — refresh ChatGPT login",
+                "Sign in to chatgpt.com in Chrome, then Refresh now.",
+            ), False, consecutive_failures + 1
         if usage_resp.status_code == 403:
             return default_block("Forbidden — Codex analytics access required"), False, consecutive_failures + 1
         if usage_resp.status_code != 200:

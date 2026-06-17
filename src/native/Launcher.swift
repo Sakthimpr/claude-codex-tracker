@@ -1117,8 +1117,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, SectionHoverDelegate, Status
         item: NSMenuItem, view: WarnBannerView,
         sessionPct: String, weeklyPct: String,
         sectionName: String, sessionReset: String, weeklyReset: String,
-        isRemaining: Bool
+        isRemaining: Bool,
+        loginPrompt: String? = nil
     ) {
+        if let loginPrompt, !loginPrompt.isEmpty {
+            view.update(message: loginPrompt, color: usageAmber)
+            item.isHidden = false
+            return
+        }
+
         let sState = meterState(for: sessionPct, isRemaining: isRemaining)
         let wState = meterState(for: weeklyPct,  isRemaining: isRemaining)
         let sCritical = sState == .critical || sState == .capped
@@ -2004,6 +2011,18 @@ statusDotRows["co_5h"]     = co5hRow
         return fallbackToRoot ? root : [:]
     }
 
+    func boolValue(_ any: Any?, fallback: Bool = false) -> Bool {
+        if let b = any as? Bool { return b }
+        if let n = any as? NSNumber { return n.boolValue }
+        return fallback
+    }
+
+    func loginPrompt(for block: [String: Any]) -> String? {
+        guard boolValue(block["needs_login"]) else { return nil }
+        let hint = stringValue(block["action_hint"], fallback: "")
+        return hint.isEmpty ? nil : hint
+    }
+
     func usedRemainingPcts(from block: [String: Any], weekly: Bool = false) -> (used: String, remaining: String) {
         if !weekly {
             if let n = block["session_effective_used_pct"] as? NSNumber {
@@ -2382,11 +2401,13 @@ statusDotRows["co_5h"]     = co5hRow
         let cWReset  = stringValue(claude["weekly_reset"])
 let cPlanRaw = stringValue(claude["plan_label"], fallback: "PRO")
         let cStatus = stringValue(claude["status"])
+        let cLoginPrompt = loginPrompt(for: claude)
 
         let oWReset = stringValue(codex["weekly_reset"])
         let oSReset = stringValue(codex["session_effective_reset"], fallback: stringValue(codex["session_reset"]))
         let oPlanRaw = stringValue(codex["plan_label"], fallback: "PLUS")
         let oStatus = stringValue(codex["status"], fallback: codex.isEmpty ? "Waiting for data..." : "—")
+        let oLoginPrompt = loginPrompt(for: codex)
 
         let updated = stringValue(payload["last_updated"], fallback: stringValue(claude["last_updated"], fallback: "Never"))
 
@@ -2483,11 +2504,13 @@ codexDialView.leftFraction   = CGFloat(pctInt(oSEffectiveView) ?? 0) / 100.0
         applyWarningBanner(item: claudeWarningItem, view: claudeWarningView,
                            sessionPct: cSEffectiveView, weeklyPct: cWView,
                            sectionName: "Claude", sessionReset: cSReset, weeklyReset: cWReset,
-                           isRemaining: showRemaining)
+                           isRemaining: showRemaining,
+                           loginPrompt: cLoginPrompt)
         applyWarningBanner(item: codexWarningItem, view: codexWarningView,
                            sessionPct: oSEffectiveView, weeklyPct: oWView,
                            sectionName: "Codex", sessionReset: oSReset, weeklyReset: oWReset,
-                           isRemaining: showRemaining)
+                           isRemaining: showRemaining,
+                           loginPrompt: oLoginPrompt)
 
         let toggleTitle = showRemaining ? "Switch to Consumed" : "Switch to Remaining"
         toggleUsageModeItem.title = toggleTitle
